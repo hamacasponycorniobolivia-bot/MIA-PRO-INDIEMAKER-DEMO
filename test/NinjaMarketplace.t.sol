@@ -23,7 +23,7 @@ contract NinjaMarketplaceTest is Test {
         marketplace = new NinjaMarketplace(address(usdc));
 
         // Give buyer test NUSDC.
-        usdc.transfer(buyer, PRICE);
+        require(usdc.transfer(buyer, PRICE));
 
         // Mint NFT #0 to seller.
         asset.mint(seller, "ipfs://ninja/0.json");
@@ -38,11 +38,7 @@ contract NinjaMarketplaceTest is Test {
         _approveMarketplace();
 
         vm.prank(seller);
-        marketplace.list(
-            address(asset),
-            0,
-            PRICE
-        );
+        marketplace.list(address(asset), 0, PRICE);
     }
 
     function _approveUSDC() internal {
@@ -78,13 +74,8 @@ contract NinjaMarketplaceTest is Test {
     function testSellerCanListNFT() public {
         _createListing();
 
-        (
-            address listingSeller,
-            address nftContract,
-            uint256 tokenId,
-            uint256 price,
-            bool active
-        ) = marketplace.listings(0);
+        (address listingSeller, address nftContract, uint256 tokenId, uint256 price, bool active) =
+            marketplace.listings(0);
 
         assertEq(listingSeller, seller);
         assertEq(nftContract, address(asset));
@@ -99,22 +90,14 @@ contract NinjaMarketplaceTest is Test {
         vm.prank(attacker);
 
         vm.expectRevert(NinjaMarketplace.NotOwner.selector);
-        marketplace.list(
-            address(asset),
-            0,
-            PRICE
-        );
+        marketplace.list(address(asset), 0, PRICE);
     }
 
     function testCannotListWithoutApproval() public {
         vm.prank(seller);
 
         vm.expectRevert(NinjaMarketplace.MarketplaceNotApproved.selector);
-        marketplace.list(
-            address(asset),
-            0,
-            PRICE
-        );
+        marketplace.list(address(asset), 0, PRICE);
     }
 
     function testCannotListWithZeroPrice() public {
@@ -123,11 +106,7 @@ contract NinjaMarketplaceTest is Test {
         vm.prank(seller);
 
         vm.expectRevert(NinjaMarketplace.InvalidPrice.selector);
-        marketplace.list(
-            address(asset),
-            0,
-            0
-        );
+        marketplace.list(address(asset), 0, 0);
     }
 
     // =============================================================
@@ -140,13 +119,7 @@ contract NinjaMarketplaceTest is Test {
         vm.prank(seller);
         marketplace.cancel(0);
 
-        (
-            ,
-            ,
-            ,
-            ,
-            bool active
-        ) = marketplace.listings(0);
+        (,,,, bool active) = marketplace.listings(0);
 
         assertFalse(active);
     }
@@ -189,13 +162,7 @@ contract NinjaMarketplaceTest is Test {
         assertEq(usdc.balanceOf(buyer), 0);
         assertEq(usdc.balanceOf(seller), PRICE);
 
-        (
-            ,
-            ,
-            ,
-            ,
-            bool active
-        ) = marketplace.listings(0);
+        (,,,, bool active) = marketplace.listings(0);
 
         assertFalse(active);
     }
@@ -228,10 +195,7 @@ contract NinjaMarketplaceTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSignature(
-                "ERC20InsufficientAllowance(address,uint256,uint256)",
-                address(marketplace),
-                0,
-                PRICE
+                "ERC20InsufficientAllowance(address,uint256,uint256)", address(marketplace), 0, PRICE
             )
         );
         marketplace.buy(0);
@@ -244,18 +208,11 @@ contract NinjaMarketplaceTest is Test {
         usdc.approve(address(marketplace), PRICE);
 
         vm.prank(buyer);
-        usdc.transfer(attacker, PRICE);
+        require(usdc.transfer(attacker, PRICE));
 
         vm.prank(buyer);
 
-        vm.expectRevert(
-            abi.encodeWithSignature(
-                "ERC20InsufficientBalance(address,uint256,uint256)",
-                buyer,
-                0,
-                PRICE
-            )
-        );
+        vm.expectRevert(abi.encodeWithSignature("ERC20InsufficientBalance(address,uint256,uint256)", buyer, 0, PRICE));
         marketplace.buy(0);
     }
 
@@ -309,21 +266,9 @@ contract NinjaMarketplaceTest is Test {
 
         vm.stopPrank();
 
-        (
-            address seller0,
-            ,
-            uint256 token0,
-            uint256 price0,
-            bool active0
-        ) = marketplace.listings(0);
+        (address seller0,, uint256 token0, uint256 price0, bool active0) = marketplace.listings(0);
 
-        (
-            address seller1,
-            ,
-            uint256 token1,
-            uint256 price1,
-            bool active1
-        ) = marketplace.listings(1);
+        (address seller1,, uint256 token1, uint256 price1, bool active1) = marketplace.listings(1);
 
         assertEq(seller0, seller);
         assertEq(token0, 0);
