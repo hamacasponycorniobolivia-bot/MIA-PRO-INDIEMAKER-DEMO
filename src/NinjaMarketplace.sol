@@ -21,19 +21,10 @@ contract NinjaMarketplace is Ownable, ReentrancyGuard {
     mapping(uint256 => Listing) public listings;
 
     event Listed(
-        uint256 indexed listingId,
-        address indexed seller,
-        address nftContract,
-        uint256 tokenId,
-        uint256 price
+        uint256 indexed listingId, address indexed seller, address nftContract, uint256 tokenId, uint256 price
     );
 
-    event Sold(
-        uint256 indexed listingId,
-        address indexed buyer,
-        address indexed seller,
-        uint256 price
-    );
+    event Sold(uint256 indexed listingId, address indexed buyer, address indexed seller, uint256 price);
 
     event Cancelled(uint256 indexed listingId);
 
@@ -53,11 +44,7 @@ contract NinjaMarketplace is Ownable, ReentrancyGuard {
         usdc = IERC20(usdcAddress);
     }
 
-    function list(
-        address nftContract,
-        uint256 tokenId,
-        uint256 price
-    ) external {
+    function list(address nftContract, uint256 tokenId, uint256 price) external {
         if (nftContract == address(0)) revert InvalidNFTContract();
         if (price == 0) revert InvalidPrice();
 
@@ -67,30 +54,16 @@ contract NinjaMarketplace is Ownable, ReentrancyGuard {
             revert NotOwner();
         }
 
-        if (
-            nft.getApproved(tokenId) != address(this) &&
-            !nft.isApprovedForAll(msg.sender, address(this))
-        ) {
+        if (nft.getApproved(tokenId) != address(this) && !nft.isApprovedForAll(msg.sender, address(this))) {
             revert MarketplaceNotApproved();
         }
 
         uint256 id = _listingId++;
 
-        listings[id] = Listing({
-            seller: msg.sender,
-            nftContract: nftContract,
-            tokenId: tokenId,
-            price: price,
-            active: true
-        });
+        listings[id] =
+            Listing({seller: msg.sender, nftContract: nftContract, tokenId: tokenId, price: price, active: true});
 
-        emit Listed(
-            id,
-            msg.sender,
-            nftContract,
-            tokenId,
-            price
-        );
+        emit Listed(id, msg.sender, nftContract, tokenId, price);
     }
 
     function buy(uint256 listingId) external nonReentrant {
@@ -105,37 +78,19 @@ contract NinjaMarketplace is Ownable, ReentrancyGuard {
             revert NFTNotAvailable();
         }
 
-        if (
-            nft.getApproved(listing.tokenId) != address(this) &&
-            !nft.isApprovedForAll(listing.seller, address(this))
-        ) {
+        if (nft.getApproved(listing.tokenId) != address(this) && !nft.isApprovedForAll(listing.seller, address(this))) {
             revert NFTNotAvailable();
         }
 
         listings[listingId].active = false;
 
-        if (
-            !usdc.transferFrom(
-                msg.sender,
-                listing.seller,
-                listing.price
-            )
-        ) {
+        if (!usdc.transferFrom(msg.sender, listing.seller, listing.price)) {
             revert PaymentFailed();
         }
 
-        nft.transferFrom(
-            listing.seller,
-            msg.sender,
-            listing.tokenId
-        );
+        nft.transferFrom(listing.seller, msg.sender, listing.tokenId);
 
-        emit Sold(
-            listingId,
-            msg.sender,
-            listing.seller,
-            listing.price
-        );
+        emit Sold(listingId, msg.sender, listing.seller, listing.price);
     }
 
     function cancel(uint256 listingId) external {

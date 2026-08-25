@@ -11,10 +11,7 @@ contract MintNinjaAsset is Script {
 
         vm.startBroadcast();
 
-        NinjaAsset(asset).mint(
-            recipient,
-            "https://example.com/ninja/1.json"
-        );
+        NinjaAsset(asset).mint(recipient, "https://example.com/ninja/1.json");
 
         vm.stopBroadcast();
 
