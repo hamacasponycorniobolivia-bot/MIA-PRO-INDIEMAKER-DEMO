@@ -1,0 +1,165 @@
+import { useEffect, useState } from 'react'
+import { BrowserProvider } from 'ethers'
+import axios from 'axios'
+import './App.css'
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+function App() {
+  const [account, setAccount] = useState('')
+  const [listings, setListings] = useState([])
+  const [inventory, setInventory] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function connectWallet() {
+    try {
+      setError('')
+
+      if (!window.ethereum) {
+        throw new Error('MetaMask o una wallet compatible no está instalada.')
+      }
+
+      const provider = new BrowserProvider(window.ethereum)
+      await provider.send('eth_requestAccounts', [])
+      const signer = await provider.getSigner()
+      const address = await signer.getAddress()
+
+      setAccount(address)
+    } catch (err) {
+      setError(err.message || 'No se pudo conectar la wallet.')
+    }
+  }
+
+  async function loadListings() {
+    try {
+      setLoading(true)
+      setError('')
+
+      const response = await axios.get(`${API}/api/listings`)
+      setListings(response.data)
+    } catch {
+      setError('No se pudieron cargar los listings.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadInventory(address) {
+    try {
+      const response = await axios.get(`${API}/api/inventory/${address}`)
+      setInventory(response.data)
+    } catch {
+      setInventory([])
+    }
+  }
+
+  useEffect(() => {
+    // oxlint-disable-next-line set-state-in-effect
+    loadListings()
+  }, [])
+
+  useEffect(() => {
+    if (account) {
+      // oxlint-disable-next-line set-state-in-effect
+      loadInventory(account)
+    }
+  }, [account])
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div>
+          <h1>MIA</h1>
+          <span>Marketplace</span>
+        </div>
+
+        <button className="wallet" onClick={connectWallet}>
+          {account
+            ? `${account.slice(0, 6)}...${account.slice(-4)}`
+            : 'Connect Wallet'}
+        </button>
+      </header>
+
+      <main>
+        <section className="hero">
+          <div>
+            <p className="eyebrow">MIA V1.1</p>
+            <h2>Own your MIA.</h2>
+            <p>
+              Compra, vende y administra tus activos digitales desde un solo
+              lugar.
+            </p>
+
+            {!account && (
+              <button className="primary" onClick={connectWallet}>
+                Connect Wallet
+              </button>
+            )}
+          </div>
+        </section>
+
+        {error && <div className="error">{error}</div>}
+
+        <section>
+          <div className="section-title">
+            <h2>Marketplace</h2>
+            <button onClick={loadListings}>Refresh</button>
+          </div>
+
+          {loading ? (
+            <p>Loading listings...</p>
+          ) : listings.length === 0 ? (
+            <div className="empty">
+              <strong>No active listings</strong>
+              <span>Los próximos activos aparecerán aquí.</span>
+            </div>
+          ) : (
+            <div className="grid">
+              {listings.map((listing, index) => (
+                <article className="card" key={listing.id ?? index}>
+                  <div className="ninja-image">🥷</div>
+                  <div className="card-body">
+                    <h3>MIA #{listing.tokenId ?? index}</h3>
+                    <p>Seller: {listing.seller ?? 'Unknown'}</p>
+                    <strong>{listing.price ?? '—'} USDC</strong>
+                    <button className="primary">View Listing</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {account && (
+          <section>
+            <div className="section-title">
+              <h2>My Inventory</h2>
+            </div>
+
+            {inventory.length === 0 ? (
+              <div className="empty">
+                <strong>Your inventory is empty</strong>
+                <span>Los NFTs que poseas aparecerán aquí.</span>
+              </div>
+            ) : (
+              <div className="grid">
+                {inventory.map((item, index) => (
+                  <article className="card" key={item.id ?? index}>
+                    <div className="ninja-image">🥷</div>
+                    <div className="card-body">
+                      <h3>MIA #{item.tokenId ?? index}</h3>
+                      <p>{item.name ?? 'MIA Asset'}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </main>
+    </div>
+  )
+}
+
+export default App
