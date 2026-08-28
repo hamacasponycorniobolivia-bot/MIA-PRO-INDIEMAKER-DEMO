@@ -1,165 +1,94 @@
-import { useEffect, useState } from 'react'
-import { BrowserProvider } from 'ethers'
-import axios from 'axios'
-import './App.css'
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import UserLayout from './layouts/UserLayout';
+import AdminLayout from './layouts/AdminLayout';
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Marketplace from './pages/Marketplace';
+import ListingDetail from './pages/ListingDetail';
+import CreateListing from './pages/CreateListing';
+import Assets from './pages/Assets';
+import Wallet from './pages/Wallet';
+import Transactions from './pages/Transactions';
+import Activity from './pages/Activity';
+import Profile from './pages/Profile';
+import Security from './pages/Security';
+import Settings from './pages/Settings';
+import ConnectWallet from './pages/ConnectWallet';
+import MintNFT from './pages/MintNFT';
+import TransferNFT from './pages/TransferNFT';
+import AdminOverview from './pages/admin/AdminOverview';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminTenants from './pages/admin/AdminTenants';
+import AdminWallets from './pages/admin/AdminWallets';
+import AdminAssets from './pages/admin/AdminAssets';
+import AdminMarketplace from './pages/admin/AdminMarketplace';
+import AdminTransactions from './pages/admin/AdminTransactions';
+import AdminLedger from './pages/admin/AdminLedger';
+import AdminAudit from './pages/admin/AdminAudit';
+import AdminLogs from './pages/admin/AdminLogs';
+import AdminSystem from './pages/admin/AdminSystem';
+import AdminExports from './pages/admin/AdminExports';
+import AdminSettings from './pages/admin/AdminSettings';
+import './i18n';
+import './App.css';
 
 function App() {
-  const [account, setAccount] = useState('')
-  const [listings, setListings] = useState([])
-  const [inventory, setInventory] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  async function connectWallet() {
-    try {
-      setError('')
-
-      if (!window.ethereum) {
-        throw new Error('MetaMask o una wallet compatible no está instalada.')
-      }
-
-      const provider = new BrowserProvider(window.ethereum)
-      await provider.send('eth_requestAccounts', [])
-      const signer = await provider.getSigner()
-      const address = await signer.getAddress()
-
-      setAccount(address)
-    } catch (err) {
-      setError(err.message || 'No se pudo conectar la wallet.')
-    }
-  }
-
-  async function loadListings() {
-    try {
-      setLoading(true)
-      setError('')
-
-      const response = await axios.get(`${API}/api/listings`)
-      setListings(response.data)
-    } catch {
-      setError('No se pudieron cargar los listings.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function loadInventory(address) {
-    try {
-      const response = await axios.get(`${API}/api/inventory/${address}`)
-      setInventory(response.data)
-    } catch {
-      setInventory([])
-    }
-  }
-
-  useEffect(() => {
-    // oxlint-disable-next-line set-state-in-effect
-    loadListings()
-  }, [])
-
-  useEffect(() => {
-    if (account) {
-      // oxlint-disable-next-line set-state-in-effect
-      loadInventory(account)
-    }
-  }, [account])
-
   return (
-    <div className="app">
-      <header className="header">
-        <div>
-          <h1>MIA</h1>
-          <span>Marketplace</span>
+    <AuthProvider>
+      <BrowserRouter>
+        <div className="app">
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
+            <Route element={<ProtectedRoute />}>
+              <Route element={<UserLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/marketplace" element={<Marketplace />} />
+                <Route path="/marketplace/create" element={<CreateListing />} />
+                <Route path="/marketplace/:tokenId" element={<ListingDetail />} />
+                <Route path="/assets" element={<Assets />} />
+                <Route path="/assets/mint" element={<MintNFT />} />
+                <Route path="/assets/transfer" element={<TransferNFT />} />
+                <Route path="/wallet" element={<Wallet />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/activity" element={<Activity />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/security" element={<Security />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/connect-wallet" element={<ConnectWallet />} />
+              </Route>
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']} />}>
+              <Route element={<AdminLayout />}>
+                <Route path="/admin" element={<AdminOverview />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/tenants" element={<AdminTenants />} />
+                <Route path="/admin/wallets" element={<AdminWallets />} />
+                <Route path="/admin/assets" element={<AdminAssets />} />
+                <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+                <Route path="/admin/transactions" element={<AdminTransactions />} />
+                <Route path="/admin/ledger" element={<AdminLedger />} />
+                <Route path="/admin/audit" element={<AdminAudit />} />
+                <Route path="/admin/logs" element={<AdminLogs />} />
+                <Route path="/admin/system" element={<AdminSystem />} />
+                <Route path="/admin/exports" element={<AdminExports />} />
+                <Route path="/admin/settings" element={<AdminSettings />} />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </div>
-
-        <button className="wallet" onClick={connectWallet}>
-          {account
-            ? `${account.slice(0, 6)}...${account.slice(-4)}`
-            : 'Connect Wallet'}
-        </button>
-      </header>
-
-      <main>
-        <section className="hero">
-          <div>
-            <p className="eyebrow">MIA V1.1</p>
-            <h2>Own your MIA.</h2>
-            <p>
-              Compra, vende y administra tus activos digitales desde un solo
-              lugar.
-            </p>
-
-            {!account && (
-              <button className="primary" onClick={connectWallet}>
-                Connect Wallet
-              </button>
-            )}
-          </div>
-        </section>
-
-        {error && <div className="error">{error}</div>}
-
-        <section>
-          <div className="section-title">
-            <h2>Marketplace</h2>
-            <button onClick={loadListings}>Refresh</button>
-          </div>
-
-          {loading ? (
-            <p>Loading listings...</p>
-          ) : listings.length === 0 ? (
-            <div className="empty">
-              <strong>No active listings</strong>
-              <span>Los próximos activos aparecerán aquí.</span>
-            </div>
-          ) : (
-            <div className="grid">
-              {listings.map((listing, index) => (
-                <article className="card" key={listing.id ?? index}>
-                  <div className="ninja-image">🥷</div>
-                  <div className="card-body">
-                    <h3>MIA #{listing.tokenId ?? index}</h3>
-                    <p>Seller: {listing.seller ?? 'Unknown'}</p>
-                    <strong>{listing.price ?? '—'} USDC</strong>
-                    <button className="primary">View Listing</button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {account && (
-          <section>
-            <div className="section-title">
-              <h2>My Inventory</h2>
-            </div>
-
-            {inventory.length === 0 ? (
-              <div className="empty">
-                <strong>Your inventory is empty</strong>
-                <span>Los NFTs que poseas aparecerán aquí.</span>
-              </div>
-            ) : (
-              <div className="grid">
-                {inventory.map((item, index) => (
-                  <article className="card" key={item.id ?? index}>
-                    <div className="ninja-image">🥷</div>
-                    <div className="card-body">
-                      <h3>MIA #{item.tokenId ?? index}</h3>
-                      <p>{item.name ?? 'MIA Asset'}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-      </main>
-    </div>
-  )
+      </BrowserRouter>
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;

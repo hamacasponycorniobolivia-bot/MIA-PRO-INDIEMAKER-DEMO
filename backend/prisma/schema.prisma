@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model assets {
+  id            Int        @id @default(autoincrement())
+  token_id      String     @unique @db.VarChar(255)
+  owner_address String     @db.VarChar(255)
+  metadata_uri  String?
+  created_at    DateTime?  @default(now()) @db.Timestamp(6)
+  tenant_id     Int?
+  listings      listings[]
+  tenants       tenants?   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "idx_assets_tenant")
+}
+
+model audit_logs {
+  id          Int       @id @default(autoincrement())
+  actor_email String    @db.VarChar(255)
+  action      String    @db.VarChar(255)
+  target      String?   @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  tenant_id   Int?
+  user_id     Int?
+  ip_address  String?   @db.VarChar(50)
+  user_agent  String?
+  old_values  Json?
+  new_values  Json?
+  table_name  String?   @db.VarChar(100)
+  record_id   Int?
+
+  @@index([created_at], map: "idx_audit_logs_created_at")
+  @@index([tenant_id], map: "idx_audit_logs_tenant")
+}
+
+model blockchain_transactions {
+  id             Int       @id @default(autoincrement())
+  tx_hash        String?   @unique @db.VarChar(255)
+  status         String?   @default("PENDING") @db.VarChar(50)
+  block_number   BigInt?
+  confirmations  Int?      @default(0)
+  operation_type String?   @db.VarChar(100)
+  operation_id   Int?
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model ledger {
+  id           Int       @id @default(autoincrement())
+  tx_hash      String    @unique @db.VarChar(255)
+  user_address String    @db.VarChar(255)
+  amount       String    @db.VarChar(255)
+  type         String    @db.VarChar(50)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model ledger_accounts {
+  id             Int              @id @default(autoincrement())
+  tenant_id      Int?
+  user_id        Int?
+  balance        Decimal?         @default(0) @db.Decimal(38, 18)
+  currency       String?          @default("USDC") @db.VarChar(10)
+  created_at     DateTime?        @default(now()) @db.Timestamp(6)
+  tenants        tenants?         @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users          users?           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger_entries ledger_entries[]
+}
+
+model ledger_entries {
+  id                  Int                  @id @default(autoincrement())
+  transaction_id      Int?
+  account_id          Int?
+  debit               Decimal?             @db.Decimal(38, 18)
+  credit              Decimal?             @db.Decimal(38, 18)
+  created_at          DateTime?            @default(now()) @db.Timestamp(6)
+  ledger_accounts     ledger_accounts?     @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger_transactions ledger_transactions? @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model ledger_transactions {
+  id              Int              @id @default(autoincrement())
+  tenant_id       Int?
+  operation_type  String           @db.VarChar(100)
+  idempotency_key String?          @unique @db.VarChar(255)
+  status          String?          @default("PENDING") @db.VarChar(50)
+  created_at      DateTime?        @default(now()) @db.Timestamp(6)
+  ledger_entries  ledger_entries[]
+  tenants         tenants?         @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model listings {
+  id             Int       @id @default(autoincrement())
+  token_id       String    @db.VarChar(255)
+  seller_address String    @db.VarChar(255)
+  price_wei      String    @db.VarChar(255)
+  is_active      Boolean?  @default(true)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  tenant_id      Int?
+  assets         assets    @relation(fields: [token_id], references: [token_id], onDelete: NoAction, onUpdate: NoAction)
+  tenants        tenants?  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "idx_listings_tenant")
+}
+
+model nfts {
+  id           Int       @id @default(autoincrement())
+  tenant_id    Int?
+  token_id     String    @db.VarChar(255)
+  owner_id     Int?
+  metadata_uri String?
+  status       String?   @default("active") @db.VarChar(50)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  deleted_at   DateTime? @db.Timestamp(6)
+  users        users?    @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenants      tenants?  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  orders       orders[]
+}
+
+model orders {
+  id                            Int       @id @default(autoincrement())
+  tenant_id                     Int?
+  buyer_id                      Int?
+  seller_id                     Int?
+  nft_id                        Int?
+  price                         String    @db.VarChar(255)
+  status                        String?   @default("PENDING") @db.VarChar(50)
+  created_at                    DateTime? @default(now()) @db.Timestamp(6)
+  users_orders_buyer_idTousers  users?    @relation("orders_buyer_idTousers", fields: [buyer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nfts                          nfts?     @relation(fields: [nft_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_orders_seller_idTousers users?    @relation("orders_seller_idTousers", fields: [seller_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenants                       tenants?  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model organization_members {
+  id              Int           @id @default(autoincrement())
+  organization_id Int
+  user_id         Int
+  role            String?       @default("member") @db.VarChar(50)
+  created_at      DateTime?     @default(now()) @db.Timestamp(6)
+  role_id         Int?
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles           roles?        @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users           users         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, user_id])
+}
+
+model organizations {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @db.VarChar(255)
+  slug                 String                 @unique @db.VarChar(255)
+  created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  tenant_id            Int?
+  organization_members organization_members[]
+  tenants              tenants?               @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model outbox_events {
+  id         Int       @id @default(autoincrement())
+  event_type String    @db.VarChar(100)
+  payload    Json?
+  status     String?   @default("PENDING") @db.VarChar(50)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model roles {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @unique @db.VarChar(50)
+  permissions          Json?                  @default("[]")
+  organization_members organization_members[]
+}
+
+model tenants {
+  id                  Int                   @id @default(autoincrement())
+  name                String                @db.VarChar(255)
+  slug                String                @unique @db.VarChar(255)
+  status              String?               @default("active") @db.VarChar(50)
+  created_at          DateTime?             @default(now()) @db.Timestamp(6)
+  ledger_accounts     ledger_accounts[]
+  ledger_transactions ledger_transactions[]
+  nfts                nfts[]
+  orders              orders[]
+  organizations       organizations[]
+  users               users[]
+  wallets             wallets[]
+  assets              assets[]
+  listings            listings[]
+}
+
+model transactions {
+  id           Int       @id @default(autoincrement())
+  tx_hash      String    @unique @db.VarChar(255)
+  event_type   String    @db.VarChar(100)
+  from_address String?   @db.VarChar(255)
+  to_address   String?   @db.VarChar(255)
+  token_id     String?   @db.VarChar(255)
+  amount       String?   @db.VarChar(255)
+  block_number BigInt?
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model users {
+  id                             Int                    @id @default(autoincrement())
+  email                          String                 @unique @db.VarChar(255)
+  password_hash                  String                 @db.VarChar(255)
+  created_at                     DateTime?              @default(now()) @db.Timestamp(6)
+  role                           String?                @default("USER") @db.VarChar(50)
+  tenant_id                      Int?
+  deleted_at                     DateTime?              @db.Timestamp(6)
+  ledger_accounts                ledger_accounts[]
+  nfts                           nfts[]
+  orders_orders_buyer_idTousers  orders[]               @relation("orders_buyer_idTousers")
+  orders_orders_seller_idTousers orders[]               @relation("orders_seller_idTousers")
+  organization_members           organization_members[]
+  tenants                        tenants?               @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  wallets                        wallets[]
+}
+
+model wallets {
+  id           Int       @id @default(autoincrement())
+  user_address String    @unique @db.VarChar(255)
+  usdc_balance String?   @default("0") @db.VarChar(255)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  user_id      Int?
+  tenant_id    Int?
+  tenants      tenants?  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users        users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model webhook_deliveries {
+  id              Int       @id @default(autoincrement())
+  webhook_id      Int?
+  payload         Json?
+  status          String?   @default("PENDING") @db.VarChar(50)
+  attempts        Int?      @default(0)
+  next_attempt_at DateTime? @db.Timestamp(6)
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  webhooks        webhooks? @relation(fields: [webhook_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model webhooks {
+  id                 Int                  @id @default(autoincrement())
+  url                String               @db.VarChar(500)
+  event_type         String               @db.VarChar(100)
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  webhook_deliveries webhook_deliveries[]
+}

@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {NinjaAsset} from "../src/NinjaAsset.sol";
-import {NinjaUSDC} from "../src/NinjaUSDC.sol";
-import {NinjaMarketplace} from "../src/NinjaMarketplace.sol";
+import {MIAAsset} from "../src/MIAAsset.sol";
+import {MIAUSDC} from "../src/MIAUSDC.sol";
+import {MIAMarketplace} from "../src/MIAMarketplace.sol";
 
-contract NinjaMarketplaceTest is Test {
-    NinjaAsset public asset;
-    NinjaUSDC public usdc;
-    NinjaMarketplace public marketplace;
+contract MIAMarketplaceTest is Test {
+    MIAAsset public asset;
+    MIAUSDC public usdc;
+    MIAMarketplace public marketplace;
 
     address public seller = makeAddr("seller");
     address public buyer = makeAddr("buyer");
@@ -18,15 +18,15 @@ contract NinjaMarketplaceTest is Test {
     uint256 public constant PRICE = 100 ether;
 
     function setUp() public {
-        asset = new NinjaAsset();
-        usdc = new NinjaUSDC();
-        marketplace = new NinjaMarketplace(address(usdc));
+        asset = new MIAAsset();
+        usdc = new MIAUSDC();
+        marketplace = new MIAMarketplace(address(usdc));
 
         // Give buyer test NUSDC.
         require(usdc.transfer(buyer, PRICE));
 
         // Mint NFT #0 to seller.
-        asset.mint(seller, "ipfs://ninja/0.json");
+        asset.mint(seller, "ipfs://MIA/0.json");
     }
 
     function _approveMarketplace() internal {
@@ -64,7 +64,7 @@ contract NinjaMarketplaceTest is Test {
     function testMintCreatesNFT() public {
         assertEq(asset.ownerOf(0), seller);
         assertEq(asset.balanceOf(seller), 1);
-        assertEq(asset.tokenURI(0), "ipfs://ninja/0.json");
+        assertEq(asset.tokenURI(0), "ipfs://MIA/0.json");
     }
 
     // =============================================================
@@ -89,14 +89,14 @@ contract NinjaMarketplaceTest is Test {
 
         vm.prank(attacker);
 
-        vm.expectRevert(NinjaMarketplace.NotOwner.selector);
+        vm.expectRevert(MIAMarketplace.NotOwner.selector);
         marketplace.list(address(asset), 0, PRICE);
     }
 
     function testCannotListWithoutApproval() public {
         vm.prank(seller);
 
-        vm.expectRevert(NinjaMarketplace.MarketplaceNotApproved.selector);
+        vm.expectRevert(MIAMarketplace.MarketplaceNotApproved.selector);
         marketplace.list(address(asset), 0, PRICE);
     }
 
@@ -105,7 +105,7 @@ contract NinjaMarketplaceTest is Test {
 
         vm.prank(seller);
 
-        vm.expectRevert(NinjaMarketplace.InvalidPrice.selector);
+        vm.expectRevert(MIAMarketplace.InvalidPrice.selector);
         marketplace.list(address(asset), 0, 0);
     }
 
@@ -129,7 +129,7 @@ contract NinjaMarketplaceTest is Test {
 
         vm.prank(attacker);
 
-        vm.expectRevert(NinjaMarketplace.NotSeller.selector);
+        vm.expectRevert(MIAMarketplace.NotSeller.selector);
         marketplace.cancel(0);
     }
 
@@ -141,7 +141,7 @@ contract NinjaMarketplaceTest is Test {
 
         vm.prank(seller);
 
-        vm.expectRevert(NinjaMarketplace.ListingNotActive.selector);
+        vm.expectRevert(MIAMarketplace.ListingNotActive.selector);
         marketplace.cancel(0);
     }
 
@@ -172,7 +172,7 @@ contract NinjaMarketplaceTest is Test {
 
         vm.prank(seller);
 
-        vm.expectRevert(NinjaMarketplace.CannotBuyOwnNFT.selector);
+        vm.expectRevert(MIAMarketplace.CannotBuyOwnNFT.selector);
         marketplace.buy(0);
     }
 
@@ -184,7 +184,7 @@ contract NinjaMarketplaceTest is Test {
 
         vm.prank(buyer);
 
-        vm.expectRevert(NinjaMarketplace.ListingNotActive.selector);
+        vm.expectRevert(MIAMarketplace.ListingNotActive.selector);
         marketplace.buy(0);
     }
 
@@ -254,7 +254,7 @@ contract NinjaMarketplaceTest is Test {
 
     function testMultipleListings() public {
         // Mint second NFT.
-        asset.mint(seller, "ipfs://ninja/1.json");
+        asset.mint(seller, "ipfs://MIA/1.json");
 
         vm.startPrank(seller);
 
@@ -284,7 +284,7 @@ contract NinjaMarketplaceTest is Test {
     function testCannotBuyNonexistentListing() public {
         vm.prank(buyer);
 
-        vm.expectRevert(NinjaMarketplace.ListingNotActive.selector);
+        vm.expectRevert(MIAMarketplace.ListingNotActive.selector);
         marketplace.buy(999);
     }
 }
