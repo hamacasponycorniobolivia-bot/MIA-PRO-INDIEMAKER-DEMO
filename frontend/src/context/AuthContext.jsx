@@ -11,13 +11,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
+    const restoreSession = async () => {
+      if (!token) {
+        delete axios.defaults.headers.common['Authorization'];
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // Aquí podríamos hacer un fetch a /api/auth/me para validar
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-    setLoading(false);
+
+      try {
+        const response = await axios.get(`${API}/api/auth/me`);
+
+        if (response.data?.user) {
+          setUser(response.data.user);
+        } else {
+          setUser(response.data);
+        }
+      } catch (error) {
+        console.error('SESSION RESTORE ERROR:', error);
+        localStorage.removeItem('mia_token');
+        delete axios.defaults.headers.common['Authorization'];
+        setToken(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
   }, [token]);
 
   const login = async (email, password) => {

@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 

@@ -1,20 +1,35 @@
 const axios = require('axios');
+const readline = require('readline');
+
+function askPassword() {
+  return new Promise(resolve => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    rl.question('Contraseña de admin@mia.com: ', answer => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
 
 const API = 'http://localhost:3000';
 
 async function test() {
+  const TEST_PASSWORD = await askPassword();
   console.log('============================================');
   console.log(' MIA V1.0 E2E TEST');
   console.log('============================================');
 
   // 1. Login
-  const login = await axios.post(`${API}/api/auth/login`, { email: 'admin@mia.com', password: 'test123' });
+  const login = await axios.post(`${API}/api/auth/login`, { email: 'admin@mia.com', password: TEST_PASSWORD });
   const token = login.data.token;
   console.log(`[✓] Login: PASS (Token: ${token.substring(0, 20)}...)`);
 
   // 2. Register
   try {
-    await axios.post(`${API}/api/auth/register`, { email: 'nuevo_test_1787671688@mia.com', password: 'test123' });
+    await axios.post(`${API}/api/auth/register`, { email: 'nuevo_test_1787671688@mia.com', password: TEST_PASSWORD });
     console.log('[✓] Register: PASS');
   } catch (error) {
     if (error.response && error.response.status === 409) {

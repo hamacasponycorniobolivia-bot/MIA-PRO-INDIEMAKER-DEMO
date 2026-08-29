@@ -5,7 +5,7 @@ echo " MIA V1.0 E2E TEST"
 echo "============================================"
 
 # Obtener token de login
-TEST_PASSWORD="${TEST_PASSWORD:-test123}"
+read -rsp "Contraseña de admin@mia.com: " TEST_PASSWORD; echo
 
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -99,7 +99,7 @@ echo "[6/6] Webhook"
 WEBHOOK_RESPONSE=$(curl -sS -X POST http://localhost:3000/api/webhooks \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"url":"https://test.com/hook","event_type":"order.completed"}')
+  -d '{"url":"https://example.com/hook","event_type":"order.completed"}')
 
 if echo "$WEBHOOK_RESPONSE" | grep -q '"webhook"'; then
   echo "PASS"

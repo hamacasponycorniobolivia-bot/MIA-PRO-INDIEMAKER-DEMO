@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -41,7 +42,7 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-const API_KEY = process.env.API_KEY || 'dev_key_mia';
+const API_KEY = process.env.API_KEY;
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
 
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:4173,http://localhost:5173')
@@ -124,6 +125,41 @@ app.get('/api/listings', async (req, res) => {
   }
 });
 
+
+app.get('/api/wallet/me', authenticate, async (req, res) => {
+  try {
+    const walletResult = await pool.query(
+      `SELECT user_address, usdc_balance
+       FROM wallets
+       WHERE user_id = $1`,
+      [req.user.id]
+    );
+
+    if (walletResult.rowCount === 0) {
+      return res.status(404).json({ error: 'Wallet no encontrada' });
+    }
+
+    const wallet = walletResult.rows[0];
+
+    const ledgerResult = await pool.query(
+      `SELECT id, tx_hash, user_address, amount, type, created_at
+       FROM ledger
+       WHERE user_address = $1
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [wallet.user_address]
+    );
+
+    res.json({
+      wallet,
+      transactions: ledgerResult.rows
+    });
+  } catch (error) {
+    console.error('WALLET ME ERROR:', error);
+    res.status(500).json({ error: 'Error al obtener wallet' });
+  }
+});
+
 app.get('/api/wallet/:address', async (req, res) => {
   try {
     const result = await pool.query('SELECT user_address, usdc_balance FROM wallets WHERE user_address = $1', [req.params.address]);
@@ -146,7 +182,13 @@ app.post('/api/wallet/deposit', authenticate, async (req, res) => {
     if (wallet.rowCount === 0)
       return res.status(404).json({ error: 'Wallet no encontrada' });
 
-    const result = await deposit(wallet.rows[0].user_address, amount);
+    const numericAmount = Number(amount);
+
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ error: 'Monto de depósito inválido' });
+    }
+
+    const result = await deposit(wallet.rows[0].user_address, numericAmount);
     if (!result)
       return res.status(500).json({ error: 'Error en depósito' });
 
@@ -470,18 +512,88 @@ app.post('/api/game/entitlements', authenticate, async (req, res) => {
   }
 });
 
+// ===== AUTH SESSION =====
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, email, role, tenant_id, created_at
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [req.user.id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        error: 'Usuario no encontrado'
+      });
+    }
+
+    res.json({
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('AUTH ME ERROR:', error);
+
+    res.status(500).json({
+      error: 'Error al recuperar la sesión'
+    });
+  }
+});
+
 // ===== RUTAS DE USUARIOS (SIN AUTH - SOLO API KEY) =====
 app.post('/api/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
-  const { email, role } = req.body;
-  if (!email || !role) return res.status(400).json({ error: 'Faltan email o role' });
+  const { email, password, role = 'USER' } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      error: 'Email y contraseña son obligatorios'
+    });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({
+      error: 'La contraseña debe tener al menos 6 caracteres'
+    });
+  }
+
+  const allowedRoles = ['USER', 'ADMIN', 'SUPER_ADMIN'];
+
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({
+      error: 'Rol inválido'
+    });
+  }
+
   try {
     const bcrypt = require('bcrypt');
-    const password_hash = await bcrypt.hash('demo123', 10);
-    const result = await pool.query('INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role', [email, password_hash, role]);
-    res.status(201).json({ user: result.rows[0] });
+    const password_hash = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      `INSERT INTO users
+       (email, password_hash, role)
+       VALUES ($1, $2, $3)
+       RETURNING id, email, role, tenant_id, created_at`,
+      [email, password_hash, role]
+    );
+
+    res.status(201).json({
+      success: true,
+      user: result.rows[0]
+    });
+
   } catch (error) {
-    if (error.code === '23505') return res.status(409).json({ error: 'Email ya registrado' });
-    res.status(500).json({ error: 'Error al crear usuario' });
+    console.error('CREATE USER ERROR:', error);
+
+    if (error.code === '23505') {
+      return res.status(409).json({
+        error: 'Email ya registrado'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Error al crear usuario'
+    });
   }
 });
 
@@ -495,9 +607,25 @@ app.get('/api/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (
 app.delete('/api/users/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
   const { id } = req.params;
   try {
+    const target = await pool.query('SELECT id, role FROM users WHERE id = $1', [id]);
+
+    if (!target.rows.length) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (target.rows[0].role === 'SUPER_ADMIN') {
+      return res.status(403).json({
+        error: 'El SUPER_ADMIN está protegido y no puede ser eliminado.'
+      });
+    }
+
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
+
     res.json({ success: true, message: 'Usuario eliminado correctamente' });
-  } catch (error) { res.status(500).json({ error: 'Error al eliminar usuario' }); }
+  } catch (error) {
+    console.error('DELETE USER ERROR:', error);
+    res.status(500).json({ error: 'Error al eliminar usuario' });
+  }
 });
 
 
@@ -559,6 +687,102 @@ app.get('/api/admin/super-user', authenticate, requireRole('SUPER_ADMIN'), async
     res.status(500).json({ error: 'Error al obtener super users' });
   }
 });
+
+
+// ===== ADMIN BACKUPS =====
+// Backup y restore protegidos por autenticación administrativa.
+
+const { execFile } = require('child_process');
+const path = require('path');
+
+app.post(
+  '/api/admin/backups',
+  authenticate,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req, res) => {
+    try {
+      const backupPath = req.body?.path?.trim();
+
+      if (!backupPath) {
+        return res.status(400).json({
+          error: 'Debes indicar la ruta donde guardar el backup'
+        });
+      }
+
+      const backupScript = path.join(__dirname, 'backup.sh');
+
+      execFile(
+        backupScript,
+        [backupPath],
+        { timeout: 120000 },
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error('ADMIN BACKUP ERROR:', stderr || error.message);
+            return res.status(500).json({
+              error: 'No se pudo crear el backup'
+            });
+          }
+
+          res.json({
+            success: true,
+            message: 'Backup creado correctamente',
+            file: backupPath,
+            output: stdout
+          });
+        }
+      );
+    } catch (error) {
+      console.error('ADMIN BACKUP ERROR:', error);
+      res.status(500).json({
+        error: 'Error al ejecutar el backup'
+      });
+    }
+  }
+);
+
+app.post(
+  '/api/admin/backups/restore',
+  authenticate,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req, res) => {
+    try {
+      const backupPath = req.body?.path?.trim();
+
+      if (!backupPath) {
+        return res.status(400).json({
+          error: 'Debes indicar la ruta del backup'
+        });
+      }
+
+      const restoreScript = path.join(__dirname, 'restore.sh');
+
+      execFile(
+        restoreScript,
+        [backupPath],
+        { timeout: 120000 },
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error('ADMIN RESTORE ERROR:', stderr || error.message);
+            return res.status(500).json({
+              error: 'No se pudo restaurar el backup'
+            });
+          }
+
+          res.json({
+            success: true,
+            message: 'Backup restaurado correctamente',
+            output: stdout
+          });
+        }
+      );
+    } catch (error) {
+      console.error('ADMIN RESTORE ERROR:', error);
+      res.status(500).json({
+        error: 'Error al ejecutar el restore'
+      });
+    }
+  }
+);
 
 const PORT = process.env.PORT || 3000;
 

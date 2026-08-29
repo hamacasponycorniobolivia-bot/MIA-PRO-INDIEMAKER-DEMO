@@ -12,7 +12,7 @@ try {
         -Method Post `
         -Uri "$API/api/auth/login" `
         -ContentType "application/json" `
-        -Body '{"email":"test@test.com","password":"test123"}'
+        -Body '{"email":"test@test.com","password":"${TEST_PASSWORD}"}'
 
     if ($login.token) {
         Write-Host "[✓] Login: PASS"

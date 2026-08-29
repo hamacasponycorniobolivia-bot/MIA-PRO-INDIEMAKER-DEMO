@@ -24,3 +24,21 @@ dist/
 *.bak
 *.bak*
 *.BEFORE_*
+
+# MIA PRO local backups / temporary artifacts
+BACKUP_MIA_PRO_*/
+backups/
+backend/backups/
+frontend/backup-*/
+frontend_PRE_*/
+*.backup
+*.backup-*
+*.broken-test
+*.pre_*
+server.js.security_fix_backup
+
+# Individual backup snapshots
+frontend/src/pages/Assets.jsx.before-final-repair-*
+frontend/src/pages/Login.jsx.backup_*
+frontend/src/pages/Profile.jsx.backup_*
+frontend/src/pages/admin/AdminUsers.jsx.backup_*
