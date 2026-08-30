@@ -1,3 +1,4 @@
+const { authenticate } = require('./middleware');
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const bcrypt = require('bcrypt');
@@ -100,6 +101,25 @@ router.post('/login', async (req, res) => {
     res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
   } catch (error) {
     res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+// Sesión actual
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, role FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json({ user: result.rows[0] });
+  } catch (error) {
+    console.error('AUTH ME ERROR:', error);
+    res.status(500).json({ error: 'Error al obtener sesión' });
   }
 });
 

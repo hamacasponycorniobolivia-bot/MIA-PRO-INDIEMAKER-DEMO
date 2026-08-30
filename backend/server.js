@@ -15,7 +15,6 @@ const { createOutboxEvent, processOutbox } = require('./outboxService');
 const { register, httpRequestsTotal, httpRequestDuration } = require('./metrics');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
-require('dotenv').config();
 
 const app = express();
 

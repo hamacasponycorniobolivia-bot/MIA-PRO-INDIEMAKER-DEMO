@@ -26,7 +26,7 @@ const STORAGE_KEY = 'mia_pro_settings';
 const LANGUAGE_KEY = 'mia_pro_language';
 
 const defaultSettings = {
-  language: 'es',
+  language: 'en',
   timezone: 'America/La_Paz',
   dateFormat: 'DD/MM/YYYY',
 
@@ -74,7 +74,7 @@ export default function Settings() {
     const storedLanguage =
       localStorage.getItem(LANGUAGE_KEY) ||
       settings.language ||
-      'es';
+      'en';
 
     if (
       ['es', 'en'].includes(storedLanguage) &&

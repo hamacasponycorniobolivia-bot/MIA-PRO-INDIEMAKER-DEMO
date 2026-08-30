@@ -12,8 +12,14 @@ export default function ProtectedRoute({ allowedRoles = [] }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
-    // Redirigir a dashboard si no tiene permisos de admin
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (
+    allowedRoles.length > 0 &&
+    !allowedRoles.includes(user.role)
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 
