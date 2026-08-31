@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { Heart, MoreHorizontal } from 'lucide-react';
 
 const mockAssets = [
-  { id: 1, name: 'Cyber Punk #001', collection: 'Cyber Collection', price: '1.2 ETH', image: 'https://placehold.co/400x400/10b981/ffffff?text=Cyber+Punk', likes: 124 },
-  { id: 2, name: 'Neon City #042', collection: 'City Series', price: '0.8 ETH', image: 'https://placehold.co/400x400/3b82f6/ffffff?text=Neon+City', likes: 89 },
-  { id: 3, name: 'Abstract Mind', collection: 'Art Block', price: '2.5 ETH', image: 'https://placehold.co/400x400/a855f7/ffffff?text=Abstract', likes: 256 },
-  { id: 4, name: 'Digital Dream', collection: 'Dreamscape', price: '0.5 ETH', image: 'https://placehold.co/400x400/f59e0b/ffffff?text=Dream', likes: 45 },
-  { id: 5, name: 'Future Vision', collection: 'Visionary', price: '3.0 ETH', image: 'https://placehold.co/400x400/ec4899/ffffff?text=Vision', likes: 312 },
-  { id: 6, name: 'Pixel World', collection: 'Retro Bits', price: '0.3 ETH', image: 'https://placehold.co/400x400/6366f1/ffffff?text=Pixel', likes: 67 },
-  { id: 7, name: 'Galactic Hero', collection: 'Space Ops', price: '1.5 ETH', image: 'https://placehold.co/400x400/ef4444/ffffff?text=Hero', likes: 190 },
-  { id: 8, name: 'Quantum Cat', collection: 'Crypto Pets', price: '0.9 ETH', image: 'https://placehold.co/400x400/14b8a6/ffffff?text=Cat', likes: 420 },
+  { id: 1, name: 'Cyber Punk #001', collection: 'Cyber Collection', price: '1.2 ETH', image: null, likes: 124 },
+  { id: 2, name: 'Neon City #042', collection: 'City Series', price: '0.8 ETH', image: null, likes: 89 },
+  { id: 3, name: 'Abstract Mind', collection: 'Art Block', price: '2.5 ETH', image: null, likes: 256 },
+  { id: 4, name: 'Digital Dream', collection: 'Dreamscape', price: '0.5 ETH', image: null, likes: 45 },
+  { id: 5, name: 'Future Vision', collection: 'Visionary', price: '3.0 ETH', image: null, likes: 312 },
+  { id: 6, name: 'Pixel World', collection: 'Retro Bits', price: '0.3 ETH', image: null, likes: 67 },
+  { id: 7, name: 'Galactic Hero', collection: 'Space Ops', price: '1.5 ETH', image: null, likes: 190 },
+  { id: 8, name: 'Quantum Cat', collection: 'Crypto Pets', price: '0.9 ETH', image: null, likes: 420 },
 ];
 
 export default function Assets() {
