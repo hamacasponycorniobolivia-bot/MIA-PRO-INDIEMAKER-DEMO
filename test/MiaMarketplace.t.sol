@@ -4,11 +4,15 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {MIAAsset} from "../src/MIAAsset.sol";
 import {MIAUSDC} from "../src/MIAUSDC.sol";
+import {MIAUSDT} from "../src/MIAUSDT.sol";
+import {MIAWBTC} from "../src/MIAWBTC.sol";
 import {MIAMarketplace} from "../src/MIAMarketplace.sol";
 
 contract MIAMarketplaceTest is Test {
     MIAAsset public asset;
     MIAUSDC public usdc;
+    MIAUSDT public usdt;
+    MIAWBTC public wbtc;
     MIAMarketplace public marketplace;
 
     address public seller = makeAddr("seller");
@@ -16,13 +20,16 @@ contract MIAMarketplaceTest is Test {
     address public attacker = makeAddr("attacker");
 
     uint256 public constant PRICE = 100 ether;
+    uint256 public constant WBTC_PRICE = 100 * 10 ** 8;
 
     function setUp() public {
         asset = new MIAAsset();
         usdc = new MIAUSDC();
-        marketplace = new MIAMarketplace(address(usdc));
+        usdt = new MIAUSDT();
+        wbtc = new MIAWBTC();
+        marketplace = new MIAMarketplace(address(usdc), address(usdt), address(wbtc));
 
-        // Give buyer test NUSDC.
+        // Give buyer test MUSD.
         require(usdc.transfer(buyer, PRICE));
 
         // Mint NFT #0 to seller.
@@ -38,7 +45,7 @@ contract MIAMarketplaceTest is Test {
         _approveMarketplace();
 
         vm.prank(seller);
-        marketplace.list(address(asset), 0, PRICE);
+        marketplace.list(address(asset), 0, PRICE, address(usdc));
     }
 
     function _approveUSDC() internal {
@@ -50,7 +57,7 @@ contract MIAMarketplaceTest is Test {
     // DEPLOYMENT
     // =============================================================
 
-    function testDeployment() public {
+    function testDeployment() public view {
         assertEq(address(marketplace.usdc()), address(usdc));
         assertEq(asset.owner(), address(this));
         assertEq(usdc.owner(), address(this));
@@ -61,7 +68,7 @@ contract MIAMarketplaceTest is Test {
     // NFT
     // =============================================================
 
-    function testMintCreatesNFT() public {
+    function testMintCreatesNFT() public view {
         assertEq(asset.ownerOf(0), seller);
         assertEq(asset.balanceOf(seller), 1);
         assertEq(asset.tokenURI(0), "ipfs://MIA/0.json");
@@ -74,7 +81,7 @@ contract MIAMarketplaceTest is Test {
     function testSellerCanListNFT() public {
         _createListing();
 
-        (address listingSeller, address nftContract, uint256 tokenId, uint256 price, bool active) =
+        (address listingSeller, address nftContract, uint256 tokenId, uint256 price, bool active,) =
             marketplace.listings(0);
 
         assertEq(listingSeller, seller);
@@ -90,14 +97,14 @@ contract MIAMarketplaceTest is Test {
         vm.prank(attacker);
 
         vm.expectRevert(MIAMarketplace.NotOwner.selector);
-        marketplace.list(address(asset), 0, PRICE);
+        marketplace.list(address(asset), 0, PRICE, address(usdc));
     }
 
     function testCannotListWithoutApproval() public {
         vm.prank(seller);
 
         vm.expectRevert(MIAMarketplace.MarketplaceNotApproved.selector);
-        marketplace.list(address(asset), 0, PRICE);
+        marketplace.list(address(asset), 0, PRICE, address(usdc));
     }
 
     function testCannotListWithZeroPrice() public {
@@ -106,7 +113,7 @@ contract MIAMarketplaceTest is Test {
         vm.prank(seller);
 
         vm.expectRevert(MIAMarketplace.InvalidPrice.selector);
-        marketplace.list(address(asset), 0, 0);
+        marketplace.list(address(asset), 0, 0, address(usdc));
     }
 
     // =============================================================
@@ -119,7 +126,7 @@ contract MIAMarketplaceTest is Test {
         vm.prank(seller);
         marketplace.cancel(0);
 
-        (,,,, bool active) = marketplace.listings(0);
+        (,,,, bool active,) = marketplace.listings(0);
 
         assertFalse(active);
     }
@@ -149,6 +156,39 @@ contract MIAMarketplaceTest is Test {
     // BUY
     // =============================================================
 
+    function testCannotSendETHForUSDCListing() public {
+        _createListing();
+
+        vm.deal(buyer, PRICE);
+
+        vm.prank(buyer);
+        vm.expectRevert(MIAMarketplace.PaymentFailed.selector);
+        marketplace.buy{value: PRICE}(0);
+    }
+
+    function testUSDCPaymentRevertsAtomicallyIfNFTTransferFails() public {
+        _createListing();
+
+        _approveUSDC();
+
+        vm.prank(seller);
+        asset.approve(address(0), 0);
+
+        uint256 buyerBalanceBefore = usdc.balanceOf(buyer);
+        uint256 sellerBalanceBefore = usdc.balanceOf(seller);
+
+        vm.prank(buyer);
+        vm.expectRevert(MIAMarketplace.NFTNotAvailable.selector);
+        marketplace.buy(0);
+
+        assertEq(usdc.balanceOf(buyer), buyerBalanceBefore);
+        assertEq(usdc.balanceOf(seller), sellerBalanceBefore);
+
+        (,,,, bool active,) = marketplace.listings(0);
+        assertTrue(active);
+        assertEq(asset.ownerOf(0), seller);
+    }
+
     function testBuyerCanBuyNFT() public {
         _createListing();
         _approveUSDC();
@@ -162,8 +202,258 @@ contract MIAMarketplaceTest is Test {
         assertEq(usdc.balanceOf(buyer), 0);
         assertEq(usdc.balanceOf(seller), PRICE);
 
-        (,,,, bool active) = marketplace.listings(0);
+        (,,,, bool active,) = marketplace.listings(0);
 
+        assertFalse(active);
+    }
+
+    function testCannotBuyNFTWithWrongETHAmount() public {
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, PRICE, address(0));
+
+        vm.deal(buyer, PRICE - 1);
+
+        vm.prank(buyer);
+        vm.expectRevert(MIAMarketplace.PaymentFailed.selector);
+        marketplace.buy{value: PRICE - 1}(0);
+    }
+
+    function testCannotBuyETHListingWithoutPayment() public {
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, PRICE, address(0));
+
+        vm.prank(buyer);
+        vm.expectRevert(MIAMarketplace.PaymentFailed.selector);
+        marketplace.buy(0);
+    }
+
+    function testBuyerCanBuyNFTWithETH() public {
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, PRICE, address(0));
+
+        vm.deal(buyer, PRICE);
+
+        uint256 sellerBalanceBefore = seller.balance;
+
+        vm.prank(buyer);
+        marketplace.buy{value: PRICE}(0);
+
+        assertEq(asset.ownerOf(0), buyer);
+        assertEq(asset.balanceOf(buyer), 1);
+        assertEq(seller.balance, sellerBalanceBefore + PRICE);
+
+        (,,,, bool active,) = marketplace.listings(0);
+        assertFalse(active);
+    }
+
+    function testCannotListWithInvalidPaymentToken() public {
+        _approveMarketplace();
+
+        address fakeToken = makeAddr("fakeToken");
+
+        vm.prank(seller);
+        vm.expectRevert(MIAMarketplace.InvalidPaymentToken.selector);
+        marketplace.list(address(asset), 0, PRICE, fakeToken);
+    }
+
+    function testCannotSendETHForUSDTListing() public {
+        require(usdt.transfer(buyer, PRICE));
+
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, PRICE, address(usdt));
+
+        vm.prank(buyer);
+        usdt.approve(address(marketplace), PRICE);
+
+        vm.deal(buyer, PRICE);
+
+        vm.prank(buyer);
+        vm.expectRevert(MIAMarketplace.PaymentFailed.selector);
+        marketplace.buy{value: PRICE}(0);
+    }
+
+    function testETHListingStoresPaymentToken() public {
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, PRICE, address(0));
+
+        (,,,, bool active, address paymentToken) = marketplace.listings(0);
+
+        assertTrue(active);
+        assertEq(paymentToken, address(0));
+    }
+
+    function testListingStoresPaymentToken() public {
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, PRICE, address(usdt));
+
+        (,,,, bool active, address paymentToken) = marketplace.listings(0);
+
+        assertTrue(active);
+        assertEq(paymentToken, address(usdt));
+    }
+
+    function testUSDTPaymentRevertsAtomicallyIfNFTTransferFails() public {
+        require(usdt.transfer(buyer, PRICE));
+
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, PRICE, address(usdt));
+
+        vm.prank(buyer);
+        usdt.approve(address(marketplace), PRICE);
+
+        vm.prank(seller);
+        asset.approve(address(0), 0);
+
+        uint256 buyerBalanceBefore = usdt.balanceOf(buyer);
+        uint256 sellerBalanceBefore = usdt.balanceOf(seller);
+
+        vm.prank(buyer);
+        vm.expectRevert(MIAMarketplace.NFTNotAvailable.selector);
+        marketplace.buy(0);
+
+        assertEq(usdt.balanceOf(buyer), buyerBalanceBefore);
+        assertEq(usdt.balanceOf(seller), sellerBalanceBefore);
+
+        (,,,, bool active,) = marketplace.listings(0);
+        assertTrue(active);
+        assertEq(asset.ownerOf(0), seller);
+    }
+
+    function testWBTCPaymentRevertsAtomicallyIfNFTTransferFails() public {
+        require(wbtc.transfer(buyer, WBTC_PRICE));
+
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, WBTC_PRICE, address(wbtc));
+
+        vm.prank(buyer);
+        wbtc.approve(address(marketplace), WBTC_PRICE);
+
+        vm.prank(seller);
+        asset.approve(address(0), 0);
+
+        uint256 buyerBalanceBefore = wbtc.balanceOf(buyer);
+        uint256 sellerBalanceBefore = wbtc.balanceOf(seller);
+
+        vm.prank(buyer);
+        vm.expectRevert(MIAMarketplace.NFTNotAvailable.selector);
+        marketplace.buy(0);
+
+        assertEq(wbtc.balanceOf(buyer), buyerBalanceBefore);
+        assertEq(wbtc.balanceOf(seller), sellerBalanceBefore);
+
+        (,,,, bool active,) = marketplace.listings(0);
+        assertTrue(active);
+        assertEq(asset.ownerOf(0), seller);
+    }
+
+    function testCannotBuyWBTCWithoutAllowance() public {
+        require(wbtc.transfer(buyer, WBTC_PRICE));
+
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, WBTC_PRICE, address(wbtc));
+
+        uint256 buyerBalanceBefore = wbtc.balanceOf(buyer);
+        uint256 sellerBalanceBefore = wbtc.balanceOf(seller);
+
+        vm.prank(buyer);
+        vm.expectRevert();
+        marketplace.buy(0);
+
+        assertEq(wbtc.balanceOf(buyer), buyerBalanceBefore);
+        assertEq(wbtc.balanceOf(seller), sellerBalanceBefore);
+
+        (,,,, bool active,) = marketplace.listings(0);
+        assertTrue(active);
+        assertEq(asset.ownerOf(0), seller);
+    }
+
+    function testCannotBuyWBTCWithoutEnoughBalance() public {
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, WBTC_PRICE, address(wbtc));
+
+        vm.prank(buyer);
+        wbtc.approve(address(marketplace), WBTC_PRICE);
+
+        uint256 buyerBalanceBefore = wbtc.balanceOf(buyer);
+        uint256 sellerBalanceBefore = wbtc.balanceOf(seller);
+
+        vm.prank(buyer);
+        vm.expectRevert();
+        marketplace.buy(0);
+
+        assertEq(wbtc.balanceOf(buyer), buyerBalanceBefore);
+        assertEq(wbtc.balanceOf(seller), sellerBalanceBefore);
+
+        (,,,, bool active,) = marketplace.listings(0);
+        assertTrue(active);
+        assertEq(asset.ownerOf(0), seller);
+    }
+
+    function testBuyerCanBuyNFTWithWBTC() public {
+        require(wbtc.transfer(buyer, WBTC_PRICE));
+
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, WBTC_PRICE, address(wbtc));
+
+        vm.prank(buyer);
+        wbtc.approve(address(marketplace), WBTC_PRICE);
+
+        vm.prank(buyer);
+        marketplace.buy(0);
+
+        assertEq(asset.ownerOf(0), buyer);
+        assertEq(asset.balanceOf(buyer), 1);
+
+        assertEq(wbtc.balanceOf(buyer), 0);
+        assertEq(wbtc.balanceOf(seller), WBTC_PRICE);
+
+        (,,,, bool active,) = marketplace.listings(0);
+        assertFalse(active);
+    }
+
+    function testBuyerCanBuyNFTWithUSDT() public {
+        require(usdt.transfer(buyer, PRICE));
+
+        _approveMarketplace();
+
+        vm.prank(seller);
+        marketplace.list(address(asset), 0, PRICE, address(usdt));
+
+        vm.prank(buyer);
+        usdt.approve(address(marketplace), PRICE);
+
+        vm.prank(buyer);
+        marketplace.buy(0);
+
+        assertEq(asset.ownerOf(0), buyer);
+        assertEq(asset.balanceOf(buyer), 1);
+
+        assertEq(usdt.balanceOf(buyer), 0);
+        assertEq(usdt.balanceOf(seller), PRICE);
+
+        (,,,, bool active,) = marketplace.listings(0);
         assertFalse(active);
     }
 
@@ -259,16 +549,16 @@ contract MIAMarketplaceTest is Test {
         vm.startPrank(seller);
 
         asset.approve(address(marketplace), 0);
-        marketplace.list(address(asset), 0, PRICE);
+        marketplace.list(address(asset), 0, PRICE, address(usdc));
 
         asset.approve(address(marketplace), 1);
-        marketplace.list(address(asset), 1, PRICE * 2);
+        marketplace.list(address(asset), 1, PRICE * 2, address(usdc));
 
         vm.stopPrank();
 
-        (address seller0,, uint256 token0, uint256 price0, bool active0) = marketplace.listings(0);
+        (address seller0,, uint256 token0, uint256 price0, bool active0,) = marketplace.listings(0);
 
-        (address seller1,, uint256 token1, uint256 price1, bool active1) = marketplace.listings(1);
+        (address seller1,, uint256 token1, uint256 price1, bool active1,) = marketplace.listings(1);
 
         assertEq(seller0, seller);
         assertEq(token0, 0);

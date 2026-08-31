@@ -13,15 +13,25 @@ contract MIAMarketplace is Ownable, ReentrancyGuard {
         uint256 tokenId;
         uint256 price;
         bool active;
+        address paymentToken;
     }
 
+    address public constant ETH = address(0);
+
     IERC20 public immutable usdc;
+    IERC20 public immutable usdt;
+    IERC20 public immutable wbtc;
 
     uint256 private _listingId;
     mapping(uint256 => Listing) public listings;
 
     event Listed(
-        uint256 indexed listingId, address indexed seller, address nftContract, uint256 tokenId, uint256 price
+        uint256 indexed listingId,
+        address indexed seller,
+        address nftContract,
+        uint256 tokenId,
+        uint256 price,
+        address paymentToken
     );
 
     event Sold(uint256 indexed listingId, address indexed buyer, address indexed seller, uint256 price);
@@ -29,6 +39,9 @@ contract MIAMarketplace is Ownable, ReentrancyGuard {
     event Cancelled(uint256 indexed listingId);
 
     error InvalidUSDC();
+    error InvalidUSDT();
+    error InvalidWBTC();
+    error InvalidPaymentToken();
     error InvalidNFTContract();
     error InvalidPrice();
     error NotOwner();
@@ -39,14 +52,28 @@ contract MIAMarketplace is Ownable, ReentrancyGuard {
     error PaymentFailed();
     error NotSeller();
 
-    constructor(address usdcAddress) Ownable(msg.sender) {
+    constructor(address usdcAddress, address usdtAddress, address wbtcAddress) Ownable(msg.sender) {
         if (usdcAddress == address(0)) revert InvalidUSDC();
+        if (usdtAddress == address(0)) revert InvalidUSDT();
+        if (wbtcAddress == address(0)) revert InvalidWBTC();
+
         usdc = IERC20(usdcAddress);
+        usdt = IERC20(usdtAddress);
+        wbtc = IERC20(wbtcAddress);
     }
 
-    function list(address nftContract, uint256 tokenId, uint256 price) external {
+    function list(address nftContract, uint256 tokenId, uint256 price, address paymentToken) external {
         if (nftContract == address(0)) revert InvalidNFTContract();
         if (price == 0) revert InvalidPrice();
+
+        if (
+            paymentToken != ETH &&
+            paymentToken != address(usdc) &&
+            paymentToken != address(usdt) &&
+            paymentToken != address(wbtc)
+        ) {
+            revert InvalidPaymentToken();
+        }
 
         IERC721 nft = IERC721(nftContract);
 
@@ -61,12 +88,19 @@ contract MIAMarketplace is Ownable, ReentrancyGuard {
         uint256 id = _listingId++;
 
         listings[id] =
-            Listing({seller: msg.sender, nftContract: nftContract, tokenId: tokenId, price: price, active: true});
+            Listing({
+                seller: msg.sender,
+                nftContract: nftContract,
+                tokenId: tokenId,
+                price: price,
+                active: true,
+                paymentToken: paymentToken
+            });
 
-        emit Listed(id, msg.sender, nftContract, tokenId, price);
+        emit Listed(id, msg.sender, nftContract, tokenId, price, paymentToken);
     }
 
-    function buy(uint256 listingId) external nonReentrant {
+    function buy(uint256 listingId) external payable nonReentrant {
         Listing memory listing = listings[listingId];
 
         if (!listing.active) revert ListingNotActive();
@@ -84,8 +118,19 @@ contract MIAMarketplace is Ownable, ReentrancyGuard {
 
         listings[listingId].active = false;
 
-        if (!usdc.transferFrom(msg.sender, listing.seller, listing.price)) {
-            revert PaymentFailed();
+        if (listing.paymentToken == ETH) {
+            if (msg.value != listing.price) revert PaymentFailed();
+
+            (bool sent,) = payable(listing.seller).call{value: msg.value}("");
+            if (!sent) revert PaymentFailed();
+        } else {
+            if (msg.value != 0) revert PaymentFailed();
+
+            IERC20 paymentToken = IERC20(listing.paymentToken);
+
+            if (!paymentToken.transferFrom(msg.sender, listing.seller, listing.price)) {
+                revert PaymentFailed();
+            }
         }
 
         nft.transferFrom(listing.seller, msg.sender, listing.tokenId);

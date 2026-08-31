@@ -6,7 +6,7 @@ import {MIAAsset} from "../src/MIAAsset.sol";
 
 contract DeployMIAAsset is Script {
     function run() external {
-        vm.startBroadcast();
+        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
         MIAAsset asset = new MIAAsset();
         vm.stopBroadcast();
 
