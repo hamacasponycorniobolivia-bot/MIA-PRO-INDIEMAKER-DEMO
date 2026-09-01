@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, RefreshCw, ArrowUpRight, ArrowDownLeft, Clock3, CheckCircle2, XCircle } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -155,7 +155,7 @@ export default function Transactions() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  const loadTransactions = useCallback(async (manual = false) => {
+  const loadTransactions = async (manual = false) => {
     if (manual) setRefreshing(true);
     else setLoading(true);
 
@@ -190,12 +190,11 @@ export default function Transactions() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => loadTransactions(), 0);
-    return () => clearTimeout(timer);
-  }, [loadTransactions]);
+    loadTransactions();
+  }, []);
 
   const filteredTransactions = useMemo(() => {
     const query = search.trim().toLowerCase();

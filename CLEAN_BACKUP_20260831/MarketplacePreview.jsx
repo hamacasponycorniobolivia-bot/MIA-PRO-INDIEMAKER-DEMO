@@ -23,7 +23,7 @@ export default function MarketplacePreview() {
           setListings(Array.isArray(data) ? data : []);
           setError(null);
         }
-      } catch {
+      } catch (err) {
         if (mounted) {
           setError('connection_failed');
           setListings([]);

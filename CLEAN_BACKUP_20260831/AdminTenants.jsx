@@ -20,7 +20,7 @@ export default function AdminTenants() {
         const data = await res.json();
         if (Array.isArray(data)) { setTenants(data); setDataStatus('LIVE'); }
         else { setTenants([]); setDataStatus('UNAVAILABLE'); }
-      } catch { setTenants([]); setDataStatus('UNAVAILABLE'); }
+      } catch (err) { setTenants([]); setDataStatus('UNAVAILABLE'); }
       finally { setLoading(false); }
     };
     fetchTenants();

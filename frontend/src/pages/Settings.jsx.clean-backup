@@ -29,15 +29,19 @@ const defaultSettings = {
   language: 'en',
   timezone: 'America/La_Paz',
   dateFormat: 'DD/MM/YYYY',
+
   theme: 'dark',
   compactMode: false,
+
   emailNotifications: true,
   activityNotifications: true,
   transactionNotifications: true,
   marketplaceNotifications: true,
+
   showActivity: true,
   sessionAlerts: true,
   transactionConfirmation: true,
+
   network: 'Ethereum',
   displayCurrency: 'USD',
   autoConfirm: false,
@@ -46,6 +50,7 @@ const defaultSettings = {
 function loadSettings() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
+
     if (!saved) return defaultSettings;
 
     return {
@@ -57,8 +62,165 @@ function loadSettings() {
   }
 }
 
-function Section({ icon: Icon, title, description, children }) {
-  return (
+export default function Settings() {
+  const { i18n } = useTranslation();
+
+  const [settings, setSettings] = useState(loadSettings);
+  const [saved, setSaved] = useState(false);
+
+  const isEs = i18n.language?.startsWith('es');
+
+  useEffect(() => {
+    const storedLanguage =
+      localStorage.getItem(LANGUAGE_KEY) ||
+      settings.language ||
+      'en';
+
+    if (
+      ['es', 'en'].includes(storedLanguage) &&
+      i18n.language !== storedLanguage
+    ) {
+      i18n.changeLanguage(storedLanguage);
+    }
+
+    const handleExternalLanguageChange = (event) => {
+      const language = event.detail?.language;
+
+      if (!['es', 'en'].includes(language)) return;
+
+      i18n.changeLanguage(language);
+
+      setSettings((current) => ({
+        ...current,
+        language,
+      }));
+    };
+
+    window.addEventListener(
+      'mia-language-change',
+      handleExternalLanguageChange
+    );
+
+    return () => {
+      window.removeEventListener(
+        'mia-language-change',
+        handleExternalLanguageChange
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      LANGUAGE_KEY,
+      settings.language
+    );
+  }, [settings.language]);
+
+  /*
+   * Aplicar idioma al cargar la configuración.
+   */
+  useEffect(() => {
+    if (settings.language && i18n.language !== settings.language) {
+      i18n.changeLanguage(settings.language);
+    }
+  }, []);
+
+  /*
+   * Aplicar tema inmediatamente.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+
+    root.classList.toggle(
+      'mia-light-mode',
+      settings.theme === 'light'
+    );
+
+    if (settings.theme === 'system') {
+      const prefersLight = window.matchMedia(
+        '(prefers-color-scheme: light)'
+      ).matches;
+
+      root.classList.toggle('mia-light-mode', prefersLight);
+    }
+  }, [settings.theme]);
+
+  const update = (key, value) => {
+    setSettings((current) => ({
+      ...current,
+      [key]: value,
+    }));
+
+    setSaved(false);
+  };
+
+  const changeLanguage = (language) => {
+    update('language', language);
+    i18n.changeLanguage(language);
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ...settings,
+        language,
+      })
+    );
+  };
+
+  const handleSave = () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(settings)
+    );
+
+    localStorage.setItem(
+      LANGUAGE_KEY,
+      settings.language
+    );
+
+    window.dispatchEvent(
+      new CustomEvent('mia-settings-change', {
+        detail: settings
+      })
+    );
+
+    i18n.changeLanguage(settings.language);
+
+    setSaved(true);
+
+    setTimeout(() => {
+      setSaved(false);
+    }, 2500);
+  };
+
+  const handleReset = () => {
+    if (
+      window.confirm(
+        isEs
+          ? '¿Restaurar toda la configuración a sus valores predeterminados?'
+          : 'Reset all settings to their default values?'
+      )
+    ) {
+      setSettings(defaultSettings);
+
+      localStorage.removeItem(STORAGE_KEY);
+
+      i18n.changeLanguage(defaultSettings.language);
+
+      document.documentElement.classList.remove(
+        'mia-light-mode'
+      );
+
+      setSaved(false);
+    }
+  };
+
+  const Section = ({
+    icon: Icon,
+    title,
+    description,
+    children,
+  }) => (
     <section
       style={{
         backgroundColor: 'var(--bg-secondary)',
@@ -118,10 +280,13 @@ function Section({ icon: Icon, title, description, children }) {
       {children}
     </section>
   );
-}
 
-function Row({ icon: Icon, title, description, children }) {
-  return (
+  const Row = ({
+    icon: Icon,
+    title,
+    description,
+    children,
+  }) => (
     <div
       style={{
         display: 'flex',
@@ -176,10 +341,12 @@ function Row({ icon: Icon, title, description, children }) {
       {children}
     </div>
   );
-}
 
-function Select({ value, onChange, children }) {
-  return (
+  const Select = ({
+    value,
+    onChange,
+    children,
+  }) => (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -196,10 +363,11 @@ function Select({ value, onChange, children }) {
       {children}
     </select>
   );
-}
 
-function Toggle({ checked, onChange }) {
-  return (
+  const Toggle = ({
+    checked,
+    onChange,
+  }) => (
     <button
       type="button"
       onClick={() => onChange(!checked)}
@@ -211,7 +379,9 @@ function Toggle({ checked, onChange }) {
         border: 'none',
         padding: '3px',
         cursor: 'pointer',
-        backgroundColor: checked ? '#10b981' : '#475569',
+        backgroundColor: checked
+          ? '#10b981'
+          : '#475569',
         transition: 'all 0.2s ease',
         flexShrink: 0,
       }}
@@ -223,151 +393,14 @@ function Toggle({ checked, onChange }) {
           height: '19px',
           borderRadius: '50%',
           background: '#fff',
-          transform: checked ? 'translateX(21px)' : 'translateX(0)',
+          transform: checked
+            ? 'translateX(21px)'
+            : 'translateX(0)',
           transition: 'transform 0.2s ease',
         }}
       />
     </button>
   );
-}
-
-export default function Settings() {
-  const { i18n } = useTranslation();
-
-  const [settings, setSettings] = useState(loadSettings);
-  const [saved, setSaved] = useState(false);
-
-  const isEs = i18n.language?.startsWith('es');
-
-  useEffect(() => {
-    const storedLanguage =
-      localStorage.getItem(LANGUAGE_KEY) ||
-      settings.language ||
-      'en';
-
-    if (
-      ['es', 'en'].includes(storedLanguage) &&
-      i18n.language !== storedLanguage
-    ) {
-      i18n.changeLanguage(storedLanguage);
-    }
-
-    const handleExternalLanguageChange = (event) => {
-      const language = event.detail?.language;
-
-      if (!['es', 'en'].includes(language)) return;
-
-      i18n.changeLanguage(language);
-
-      setSettings((current) => ({
-        ...current,
-        language,
-      }));
-    };
-
-    window.addEventListener(
-      'mia-language-change',
-      handleExternalLanguageChange
-    );
-
-    return () => {
-      window.removeEventListener(
-        'mia-language-change',
-        handleExternalLanguageChange
-      );
-    };
-  }, [settings.language, i18n]);
-
-  useEffect(() => {
-    localStorage.setItem(LANGUAGE_KEY, settings.language);
-  }, [settings.language]);
-
-  useEffect(() => {
-    if (settings.language && i18n.language !== settings.language) {
-      i18n.changeLanguage(settings.language);
-    }
-  }, [settings.language, i18n]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    root.classList.toggle(
-      'mia-light-mode',
-      settings.theme === 'light'
-    );
-
-    if (settings.theme === 'system') {
-      const prefersLight = window.matchMedia(
-        '(prefers-color-scheme: light)'
-      ).matches;
-
-      root.classList.toggle('mia-light-mode', prefersLight);
-    }
-  }, [settings.theme]);
-
-  const update = (key, value) => {
-    setSettings((current) => ({
-      ...current,
-      [key]: value,
-    }));
-
-    setSaved(false);
-  };
-
-  const changeLanguage = (language) => {
-    update('language', language);
-    i18n.changeLanguage(language);
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        ...settings,
-        language,
-      })
-    );
-  };
-
-  const handleSave = () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(settings)
-    );
-
-    localStorage.setItem(
-      LANGUAGE_KEY,
-      settings.language
-    );
-
-    window.dispatchEvent(
-      new CustomEvent('mia-settings-change', {
-        detail: settings,
-      })
-    );
-
-    i18n.changeLanguage(settings.language);
-
-    setSaved(true);
-
-    setTimeout(() => {
-      setSaved(false);
-    }, 2500);
-  };
-
-  const handleReset = () => {
-    if (
-      window.confirm(
-        isEs
-          ? '¿Restaurar toda la configuración a sus valores predeterminados?'
-          : 'Reset all settings to their default values?'
-      )
-    ) {
-      setSettings(defaultSettings);
-      localStorage.removeItem(STORAGE_KEY);
-      i18n.changeLanguage(defaultSettings.language);
-      document.documentElement.classList.remove('mia-light-mode');
-      setSaved(false);
-    }
-  };
 
   return (
     <div
@@ -377,6 +410,8 @@ export default function Settings() {
         margin: '0 auto',
       }}
     >
+      {/* HEADER */}
+
       <div
         style={{
           display: 'flex',
@@ -482,9 +517,11 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* GENERAL */}
+
       <Section
         icon={Globe}
-        title="General"
+        title={isEs ? 'General' : 'General'}
         description={
           isEs
             ? 'Idioma, región y formatos utilizados por MIA.'
@@ -520,7 +557,9 @@ export default function Settings() {
         >
           <Select
             value={settings.timezone}
-            onChange={(value) => update('timezone', value)}
+            onChange={(value) =>
+              update('timezone', value)
+            }
           >
             <option value="America/La_Paz">
               Bolivia — La Paz
@@ -528,7 +567,9 @@ export default function Settings() {
             <option value="America/New_York">
               Estados Unidos — Nueva York
             </option>
-            <option value="UTC">UTC</option>
+            <option value="UTC">
+              UTC
+            </option>
           </Select>
         </Row>
 
@@ -543,14 +584,24 @@ export default function Settings() {
         >
           <Select
             value={settings.dateFormat}
-            onChange={(value) => update('dateFormat', value)}
+            onChange={(value) =>
+              update('dateFormat', value)
+            }
           >
-            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+            <option value="DD/MM/YYYY">
+              DD/MM/YYYY
+            </option>
+            <option value="MM/DD/YYYY">
+              MM/DD/YYYY
+            </option>
+            <option value="YYYY-MM-DD">
+              YYYY-MM-DD
+            </option>
           </Select>
         </Row>
       </Section>
+
+      {/* APARIENCIA */}
 
       <Section
         icon={Palette}
@@ -578,14 +629,18 @@ export default function Settings() {
         >
           <Select
             value={settings.theme}
-            onChange={(value) => update('theme', value)}
+            onChange={(value) =>
+              update('theme', value)
+            }
           >
             <option value="dark">
               {isEs ? 'Oscuro' : 'Dark'}
             </option>
+
             <option value="light">
               {isEs ? 'Claro' : 'Light'}
             </option>
+
             <option value="system">
               {isEs ? 'Sistema' : 'System'}
             </option>
@@ -593,7 +648,11 @@ export default function Settings() {
         </Row>
 
         <Row
-          title={isEs ? 'Modo compacto' : 'Compact mode'}
+          title={
+            isEs
+              ? 'Modo compacto'
+              : 'Compact mode'
+          }
           description={
             isEs
               ? 'Reduce el espacio entre elementos de la interfaz.'
@@ -608,6 +667,8 @@ export default function Settings() {
           />
         </Row>
       </Section>
+
+      {/* NOTIFICACIONES */}
 
       <Section
         icon={Bell}
@@ -658,7 +719,11 @@ export default function Settings() {
 
         <Row
           icon={Wallet}
-          title={isEs ? 'Transacciones' : 'Transactions'}
+          title={
+            isEs
+              ? 'Transacciones'
+              : 'Transactions'
+          }
           description={
             isEs
               ? 'Notificaciones sobre operaciones financieras.'
@@ -691,6 +756,8 @@ export default function Settings() {
         </Row>
       </Section>
 
+      {/* PRIVACIDAD */}
+
       <Section
         icon={Shield}
         title={
@@ -706,7 +773,11 @@ export default function Settings() {
       >
         <Row
           icon={Eye}
-          title={isEs ? 'Mostrar actividad' : 'Show activity'}
+          title={
+            isEs
+              ? 'Mostrar actividad'
+              : 'Show activity'
+          }
           description={
             isEs
               ? 'Permitir que la actividad aparezca en el panel.'
@@ -723,7 +794,11 @@ export default function Settings() {
 
         <Row
           icon={AlertTriangle}
-          title={isEs ? 'Alertas de sesión' : 'Session alerts'}
+          title={
+            isEs
+              ? 'Alertas de sesión'
+              : 'Session alerts'
+          }
           description={
             isEs
               ? 'Avisar cuando se detecte una nueva sesión.'
@@ -760,6 +835,8 @@ export default function Settings() {
         </Row>
       </Section>
 
+      {/* WEB3 */}
+
       <Section
         icon={Wallet}
         title="Web3"
@@ -771,7 +848,11 @@ export default function Settings() {
       >
         <Row
           icon={Globe}
-          title={isEs ? 'Red principal' : 'Primary network'}
+          title={
+            isEs
+              ? 'Red principal'
+              : 'Primary network'
+          }
           description={
             isEs
               ? 'Red utilizada como referencia para operaciones Web3.'
@@ -780,11 +861,21 @@ export default function Settings() {
         >
           <Select
             value={settings.network}
-            onChange={(value) => update('network', value)}
+            onChange={(value) =>
+              update('network', value)
+            }
           >
-            <option value="Ethereum">Ethereum</option>
-            <option value="Polygon">Polygon</option>
-            <option value="Base">Base</option>
+            <option value="Ethereum">
+              Ethereum
+            </option>
+
+            <option value="Polygon">
+              Polygon
+            </option>
+
+            <option value="Base">
+              Base
+            </option>
           </Select>
         </Row>
 
@@ -807,9 +898,17 @@ export default function Settings() {
               update('displayCurrency', value)
             }
           >
-            <option value="USD">USD — Dólar</option>
-            <option value="EUR">EUR — Euro</option>
-            <option value="BOB">BOB — Boliviano</option>
+            <option value="USD">
+              USD — Dólar
+            </option>
+
+            <option value="EUR">
+              EUR — Euro
+            </option>
+
+            <option value="BOB">
+              BOB — Boliviano
+            </option>
           </Select>
         </Row>
 
@@ -834,6 +933,8 @@ export default function Settings() {
           />
         </Row>
       </Section>
+
+      {/* ESTADO */}
 
       <div
         style={{

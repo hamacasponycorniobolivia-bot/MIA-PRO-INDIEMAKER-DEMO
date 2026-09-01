@@ -20,7 +20,7 @@ export default function AdminAssets() {
         const data = await res.json();
         if (Array.isArray(data)) { setAssets(data); setDataStatus('LIVE'); }
         else { setAssets([]); setDataStatus('UNAVAILABLE'); }
-      } catch { setAssets([]); setDataStatus('UNAVAILABLE'); }
+      } catch (err) { setAssets([]); setDataStatus('UNAVAILABLE'); }
       finally { setLoading(false); }
     };
     fetchAssets();

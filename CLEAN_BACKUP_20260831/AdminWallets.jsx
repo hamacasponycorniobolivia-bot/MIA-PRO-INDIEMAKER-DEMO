@@ -20,7 +20,7 @@ export default function AdminWallets() {
         const data = await res.json();
         if (Array.isArray(data)) { setWallets(data); setDataStatus('LIVE'); }
         else { setWallets([]); setDataStatus('UNAVAILABLE'); }
-      } catch { setWallets([]); setDataStatus('UNAVAILABLE'); }
+      } catch (err) { setWallets([]); setDataStatus('UNAVAILABLE'); }
       finally { setLoading(false); }
     };
     fetchWallets();

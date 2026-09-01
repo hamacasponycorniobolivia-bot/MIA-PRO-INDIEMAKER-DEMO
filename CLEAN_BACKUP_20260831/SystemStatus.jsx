@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 export default function SystemStatus() {
   // Regla 125: Estado honesto. Cambiar a 'LIVE' o 'TESTNET' cuando el backend esté conectado.
-  const [globalStatus, _setGlobalStatus] = useState('UNAVAILABLE');
+  const [globalStatus, setGlobalStatus] = useState('UNAVAILABLE');
 
   const services = [
     { name: 'MIA API', status: globalStatus },

@@ -31,7 +31,7 @@ export default function ListingDetail() {
           setListing(found || null);
           setLoading(false);
         }
-      } catch {
+      } catch (err) {
         if (mounted) {
           setListing(null);
           setLoading(false);
@@ -55,7 +55,7 @@ export default function ListingDetail() {
       await axios.post(`${API}/api/marketplace/buy`, { tokenId });
       setMsg({ type: 'success', text: isEs ? 'Compra realizada con éxito' : 'Purchase completed successfully' });
       setTimeout(() => navigate('/assets'), 2000);
-    } catch {
+    } catch (err) {
       setMsg({ type: 'error', text: err.response?.data?.error || (isEs ? 'Error en la compra' : 'Purchase error') });
     } finally {
       setBuying(false);

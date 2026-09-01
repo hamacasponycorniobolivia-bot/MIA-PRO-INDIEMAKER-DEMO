@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,7 +36,7 @@ export default function AdminUsers() {
     role: 'USER'
   });
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = async () => {
     if (!token) return;
 
     setLoading(true);
@@ -66,12 +66,11 @@ export default function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  }, [token, isEs]);
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => loadUsers(), 0);
-    return () => clearTimeout(timer);
-  }, [loadUsers]);
+    loadUsers();
+  }, [token]);
 
   const createUser = async (event) => {
     event.preventDefault();

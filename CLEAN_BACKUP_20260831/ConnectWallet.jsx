@@ -21,7 +21,7 @@ export default function ConnectWallet() {
     return networks[id] || `Chain ID: ${id}`;
   };
 
-  const _formatAddress = (addr) => {
+  const formatAddress = (addr) => {
     if (!addr) return '';
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };

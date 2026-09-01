@@ -20,7 +20,7 @@ export default function AdminTransactions() {
         const data = await res.json();
         if (Array.isArray(data)) { setTransactions(data); setDataStatus('LIVE'); }
         else { setTransactions([]); setDataStatus('UNAVAILABLE'); }
-      } catch { setTransactions([]); setDataStatus('UNAVAILABLE'); }
+      } catch (err) { setTransactions([]); setDataStatus('UNAVAILABLE'); }
       finally { setLoading(false); }
     };
     fetchTransactions();

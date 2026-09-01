@@ -276,7 +276,7 @@ export default function Settings() {
         handleExternalLanguageChange
       );
     };
-  }, [settings.language, i18n]);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(LANGUAGE_KEY, settings.language);
@@ -286,7 +286,7 @@ export default function Settings() {
     if (settings.language && i18n.language !== settings.language) {
       i18n.changeLanguage(settings.language);
     }
-  }, [settings.language, i18n]);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;

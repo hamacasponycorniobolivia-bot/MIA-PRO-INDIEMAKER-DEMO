@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, RefreshCw, Activity as ActivityIcon, CheckCircle2, XCircle } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -50,8 +50,8 @@ export default function Activity() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  const loadActivity = useCallback(async (manual = false) => {
-    if (manual) setRefreshing(true); else setLoading(true);
+  const loadActivity = async (manual = false) => {
+    manual ? setRefreshing(true) : setLoading(true);
     setError('');
 
     try {
@@ -78,12 +78,11 @@ export default function Activity() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => loadActivity(), 0);
-    return () => clearTimeout(timer);
-  }, [loadActivity]);
+    loadActivity();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

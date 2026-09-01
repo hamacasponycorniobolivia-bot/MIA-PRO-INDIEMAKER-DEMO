@@ -125,6 +125,93 @@ app.get('/api/listings', async (req, res) => {
 });
 
 
+
+// ===== WALLET ADDRESSES: ACTIVOS + REDES =====
+
+app.get('/api/wallet/addresses', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, asset, network, address, created_at, updated_at
+       FROM wallet_addresses
+       WHERE user_id = $1 AND tenant_id = (
+         SELECT tenant_id FROM users WHERE id = $1
+       )
+       ORDER BY asset, network`,
+      [req.user.id]
+    );
+
+    res.json({ addresses: result.rows });
+  } catch (error) {
+    console.error('WALLET ADDRESSES GET ERROR:', error);
+    res.status(500).json({ error: 'Error al obtener direcciones' });
+  }
+});
+
+app.post('/api/wallet/addresses', authenticate, async (req, res) => {
+  const { asset, network, address } = req.body;
+
+  if (!asset || !network || !address) {
+    return res.status(400).json({
+      error: 'Faltan asset, network o address'
+    });
+  }
+
+  const cleanAsset = String(asset).trim().toUpperCase();
+  const cleanNetwork = String(network).trim();
+  const cleanAddress = String(address).trim();
+
+  if (!cleanAddress) {
+    return res.status(400).json({
+      error: 'Dirección inválida'
+    });
+  }
+
+  try {
+    const userResult = await pool.query(
+      `SELECT tenant_id
+       FROM users
+       WHERE id = $1`,
+      [req.user.id]
+    );
+
+    if (userResult.rowCount === 0) {
+      return res.status(404).json({
+        error: 'Usuario no encontrado'
+      });
+    }
+
+    const tenantId = userResult.rows[0].tenant_id;
+
+    const result = await pool.query(
+      `INSERT INTO wallet_addresses
+         (user_id, tenant_id, asset, network, address)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id, asset, network)
+       DO UPDATE SET
+         address = EXCLUDED.address,
+         updated_at = NOW()
+       RETURNING id, asset, network, address, created_at, updated_at`,
+      [
+        req.user.id,
+        tenantId,
+        cleanAsset,
+        cleanNetwork,
+        cleanAddress
+      ]
+    );
+
+    res.status(200).json({
+      success: true,
+      address: result.rows[0]
+    });
+  } catch (error) {
+    console.error('WALLET ADDRESSES POST ERROR:', error);
+    res.status(500).json({
+      error: 'Error al registrar dirección'
+    });
+  }
+});
+
 app.get('/api/wallet/me', authenticate, async (req, res) => {
   try {
     const walletResult = await pool.query(

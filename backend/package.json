@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "bash test-e2e.sh"
+    "test": "bash test-e2e.sh",
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
@@ -31,5 +32,9 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.1"
   }
 }

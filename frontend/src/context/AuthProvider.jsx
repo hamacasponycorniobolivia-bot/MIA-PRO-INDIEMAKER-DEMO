@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-
 import { AuthContext } from './AuthContext';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -46,9 +45,11 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const res = await axios.post(`${API}/api/auth/login`, { email, password });
     const { token, user } = res.data;
+
     localStorage.setItem('mia_token', token);
     setToken(token);
     setUser(user);
+
     return user;
   };
 
@@ -65,4 +66,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-

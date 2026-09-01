@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-import { AuthContext } from './AuthContext';
+const AuthContext = createContext(null);
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -66,3 +66,4 @@ export function AuthProvider({ children }) {
   );
 }
 
+export const useAuth = () => useContext(AuthContext);

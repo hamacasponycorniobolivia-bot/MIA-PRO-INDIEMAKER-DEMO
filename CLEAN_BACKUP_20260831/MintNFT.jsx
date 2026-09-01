@@ -48,7 +48,7 @@ export default function MintNFT() {
     setLoading(true);
 
     try {
-      await axios.post(`${API}/api/web3/mint`,
+      const res = await axios.post(`${API}/api/web3/mint`,
         { metadataUri, recipientAddress: account },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );

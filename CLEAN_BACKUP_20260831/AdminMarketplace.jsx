@@ -20,7 +20,7 @@ export default function AdminMarketplace() {
         const data = await res.json();
         if (Array.isArray(data)) { setListings(data); setDataStatus('LIVE'); }
         else { setListings([]); setDataStatus('UNAVAILABLE'); }
-      } catch { setListings([]); setDataStatus('UNAVAILABLE'); }
+      } catch (err) { setListings([]); setDataStatus('UNAVAILABLE'); }
       finally { setLoading(false); }
     };
     fetchListings();

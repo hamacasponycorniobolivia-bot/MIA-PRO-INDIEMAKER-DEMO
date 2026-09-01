@@ -27,10 +27,7 @@ export default function AdminLayout() {
     { path: '/admin/settings', label: 'Configuración', icon: Settings },
   ];
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsMobileMenuOpen(false), 0);
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
+  useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-50 font-sans selection:bg-emerald-500/30">

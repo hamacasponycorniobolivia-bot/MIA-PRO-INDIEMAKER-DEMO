@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import {
+  TrendingUp,
   ArrowUpRight,
   ArrowDownLeft,
   Copy,
@@ -13,7 +14,6 @@ const API =
 export default function Wallet() {
   const [wallet, setWallet] = useState(null);
   const [txs, setTxs] = useState([]);
-  const [walletAddresses, setWalletAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -22,14 +22,10 @@ export default function Wallet() {
       setLoading(true);
       setError('');
 
-      const [walletResponse, addressesResponse] = await Promise.all([
-        axios.get(`${API}/api/wallet/me`),
-        axios.get(`${API}/api/wallet/addresses`),
-      ]);
+      const response = await axios.get(`${API}/api/wallet/me`);
 
-      setWallet(walletResponse.data.wallet);
-      setTxs(walletResponse.data.transactions || []);
-      setWalletAddresses(addressesResponse.data.addresses || []);
+      setWallet(response.data.wallet);
+      setTxs(response.data.transactions || []);
     } catch (err) {
       console.error('Wallet error:', err);
 
@@ -40,15 +36,13 @@ export default function Wallet() {
 
       setWallet(null);
       setTxs([]);
-      setWalletAddresses([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => loadWallet(), 0);
-    return () => clearTimeout(timer);
+    loadWallet();
   }, [loadWallet]);
 
   const copyAddress = async () => {
@@ -328,19 +322,20 @@ export default function Wallet() {
           </p>
         </div>
 
-        <div
+        <button
+          type="button"
           style={{
-            padding: '0.55rem 0.8rem',
-            borderRadius: '9px',
-            background: 'rgba(16,185,129,0.10)',
-            border: '1px solid rgba(16,185,129,0.20)',
+            padding: '0.7rem 1rem',
+            border: '1px solid rgba(16,185,129,0.3)',
+            borderRadius: '10px',
+            background: 'rgba(16,185,129,0.12)',
             color: '#6ee7b7',
-            fontSize: '0.75rem',
-            fontWeight: '800',
+            fontWeight: '700',
+            cursor: 'pointer',
           }}
         >
-          ● API ACTIVA
-        </div>
+          + Agregar billetera
+        </button>
       </div>
 
       <div
@@ -358,203 +353,102 @@ export default function Wallet() {
           ['USDT', 'BNB', '₮'],
           ['ETH', 'Ethereum', 'Ξ'],
           ['BTC', 'Bitcoin', '₿'],
-        ].map(([asset, network, icon]) => {
-          const saved = walletAddresses.find(
-            (item) =>
-              item.asset === asset &&
-              item.network === network
-          );
-
-          const saveAddress = async () => {
-            const address = window.prompt(
-              `Dirección ${asset} — ${network}:`,
-              saved?.address || ''
-            );
-
-            if (!address || !address.trim()) return;
-
-            try {
-              setError('');
-
-              await axios.post(
-                `${API}/api/wallet/addresses`,
-                {
-                  asset,
-                  network,
-                  address: address.trim(),
-                }
-              );
-
-              const response = await axios.get(
-                `${API}/api/wallet/addresses`
-              );
-
-              setWalletAddresses(
-                response.data.addresses || []
-              );
-            } catch (err) {
-              console.error(
-                'Wallet address save error:',
-                err
-              );
-
-              setError(
-                err.response?.data?.error ||
-                'No se pudo registrar la dirección.'
-              );
-            }
-          };
-
-          const deleteAddress = async () => {
-            if (!saved) return;
-
-            window.alert(
-              'El borrado de direcciones todavía no está expuesto por la API.'
-            );
-          };
-
-          return (
+        ].map(([asset, network, icon]) => (
+          <div
+            key={`${asset}-${network}`}
+            style={{
+              background: 'rgba(2,6,23,0.45)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: '14px',
+              padding: '1.1rem',
+            }}
+          >
             <div
-              key={`${asset}-${network}`}
               style={{
-                background: 'rgba(2,6,23,0.45)',
-                border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: '14px',
-                padding: '1.1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.8rem',
+                marginBottom: '0.8rem',
               }}
             >
               <div
                 style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.8rem',
-                  marginBottom: '0.8rem',
+                  justifyContent: 'center',
+                  background: 'rgba(16,185,129,0.1)',
+                  fontSize: '1.25rem',
                 }}
               >
-                <div
-                  style={{
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(16,185,129,0.1)',
-                    fontSize: '1.25rem',
-                  }}
-                >
-                  {icon}
-                </div>
-
-                <div>
-                  <div
-                    style={{
-                      fontWeight: '800',
-                      color: 'white',
-                    }}
-                  >
-                    {asset}
-                  </div>
-
-                  <div
-                    style={{
-                      color: '#64748b',
-                      fontSize: '0.78rem',
-                    }}
-                  >
-                    {network}
-                  </div>
-                </div>
+                {icon}
               </div>
 
-              <div
-                style={{
-                  background: 'rgba(0,0,0,0.3)',
-                  borderRadius: '9px',
-                  padding: '0.75rem',
-                  color: '#64748b',
-                  fontSize: '0.75rem',
-                  fontFamily: 'monospace',
-                  marginBottom: '0.8rem',
-                  minHeight: '52px',
-                }}
-              >
-                {saved ? (
-                  <>
-                    <div
-                      style={{
-                        color: '#6ee7b7',
-                        fontWeight: '800',
-                        marginBottom: '0.35rem',
-                      }}
-                    >
-                      ✓ REGISTRADA EN MIA
-                    </div>
+              <div>
+                <div style={{ fontWeight: '800', color: 'white' }}>
+                  {asset}
+                </div>
 
-                    <div
-                      style={{
-                        wordBreak: 'break-all',
-                        color: '#cbd5e1',
-                      }}
-                    >
-                      {saved.address}
-                    </div>
-                  </>
-                ) : (
-                  'Sin dirección configurada'
-                )}
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={saveAddress}
-                  style={{
-                    flex: 1,
-                    padding: '0.55rem',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    background: 'rgba(255,255,255,0.04)',
-                    color: '#cbd5e1',
-                    cursor: 'pointer',
-                    fontSize: '0.78rem',
-                    fontWeight: '700',
-                  }}
-                >
-                  {saved
-                    ? 'Actualizar dirección'
-                    : 'Agregar dirección'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={deleteAddress}
-                  disabled={!saved}
-                  style={{
-                    padding: '0.55rem 0.7rem',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(239,68,68,0.15)',
-                    background: 'rgba(239,68,68,0.05)',
-                    color: saved ? '#f87171' : '#475569',
-                    cursor: saved ? 'pointer' : 'not-allowed',
-                    fontSize: '0.78rem',
-                    fontWeight: '700',
-                  }}
-                >
-                  Borrar
-                </button>
+                <div style={{ color: '#64748b', fontSize: '0.78rem' }}>
+                  {network}
+                </div>
               </div>
             </div>
-          );
-        })}
+
+            <div
+              style={{
+                background: 'rgba(0,0,0,0.3)',
+                borderRadius: '9px',
+                padding: '0.75rem',
+                color: '#64748b',
+                fontSize: '0.75rem',
+                fontFamily: 'monospace',
+                marginBottom: '0.8rem',
+              }}
+            >
+              Sin dirección configurada
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  padding: '0.55rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: '#cbd5e1',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: '700',
+                }}
+              >
+                Agregar dirección
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  padding: '0.55rem 0.7rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(239,68,68,0.15)',
+                  background: 'rgba(239,68,68,0.05)',
+                  color: '#f87171',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: '700',
+                }}
+              >
+                Borrar
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
-
 
 <div
         style={{

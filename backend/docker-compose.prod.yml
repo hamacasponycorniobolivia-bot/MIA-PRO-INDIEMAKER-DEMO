@@ -16,7 +16,7 @@ services:
     container_name: mia_postgres_prod
     environment:
       POSTGRES_USER: mia
-      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: mia
     ports:
       - "5432:5432"

@@ -18,7 +18,7 @@ curl -s -X POST http://localhost:3000/api/auth/login \
 
 TOKEN=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
 
-echo "TOKEN: ${TOKEN:0:20}..."
+echo "TOKEN: [OCULTO — JWT obtenido correctamente]"
 
 # 1. Test Register
 echo "[1/6] Register"
