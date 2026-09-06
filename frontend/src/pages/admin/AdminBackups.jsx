@@ -1,15 +1,18 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Database, Download, RotateCcw, ShieldCheck } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function AdminBackups() {
+  const { t } = useTranslation();
+
   const [backupPath, setBackupPath] = useState('');
   const [restorePath, setRestorePath] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('mia_token');
 
   const handleBackup = async () => {
     if (!backupPath.trim()) {
@@ -36,7 +39,7 @@ export default function AdminBackups() {
         throw new Error(data.error || 'No se pudo crear el backup.');
       }
 
-      setMessage(`Backup creado correctamente: ${data.file || backupPath}`);
+      setMessage(`${t('Backup creado correctamente:')} ${data.file || backupPath}`);
     } catch (error) {
       setMessage(`Error: ${error.message}`);
     } finally {
@@ -84,9 +87,9 @@ export default function AdminBackups() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white">Backups</h1>
+        <h1 className="text-3xl font-bold text-white">{t('Backups')}</h1>
         <p className="mt-2 text-slate-400">
-          Gestión segura de copias de respaldo de MIA Pro.
+          {t('Gestión segura de copias de respaldo de MIA Pro.')}
         </p>
       </div>
 
@@ -94,9 +97,9 @@ export default function AdminBackups() {
         <div className="flex items-center gap-3 mb-6">
           <Database className="w-6 h-6 text-emerald-400" />
           <div>
-            <h2 className="text-lg font-semibold text-white">Crear Backup</h2>
+            <h2 className="text-lg font-semibold text-white">{t('Crear Backup')}</h2>
             <p className="text-sm text-slate-400">
-              Indica la ruta donde quieres guardar la copia.
+              {t('Indica la ruta donde quieres guardar la copia.')}
             </p>
           </div>
         </div>
@@ -116,7 +119,7 @@ export default function AdminBackups() {
             className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
           >
             <Download className="w-5 h-5" />
-            {loading ? 'Procesando...' : 'Crear Backup'}
+            {loading ? t('Procesando...') : t('Crear Backup')}
           </button>
         </div>
       </div>
@@ -125,9 +128,9 @@ export default function AdminBackups() {
         <div className="flex items-center gap-3 mb-6">
           <RotateCcw className="w-6 h-6 text-red-400" />
           <div>
-            <h2 className="text-lg font-semibold text-white">Restaurar Backup</h2>
+            <h2 className="text-lg font-semibold text-white">{t('Restaurar Backup')}</h2>
             <p className="text-sm text-slate-400">
-              Indica la ruta del archivo .dump que deseas restaurar.
+              {t('Indica la ruta del archivo .dump que deseas restaurar.')}
             </p>
           </div>
         </div>
@@ -147,7 +150,7 @@ export default function AdminBackups() {
             className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-500 disabled:opacity-50"
           >
             <RotateCcw className="w-5 h-5" />
-            {loading ? 'Procesando...' : 'Restaurar Backup'}
+            {loading ? t('Procesando...') : t('Restaurar Backup')}
           </button>
         </div>
       </div>
@@ -156,7 +159,7 @@ export default function AdminBackups() {
         <div className="flex items-center gap-3">
           <ShieldCheck className="w-5 h-5 text-emerald-400" />
           <span className="text-sm text-slate-300">
-            Las operaciones requieren autenticación administrativa.
+            {t('Las operaciones requieren autenticación administrativa.')}
           </span>
         </div>
       </div>

@@ -137,45 +137,73 @@ async function postLedgerTransaction({
   };
 }
 
-async function getAccount({ tenantId, accountCode, client = null }) {
-  const db = client || pool;
-
-  const result = await db.query(
-    `SELECT *
-       FROM ledger_accounts
-      WHERE tenant_id = $1
-        AND account_code = $2
-        AND active = TRUE
-      LIMIT 1`,
-    [tenantId, accountCode]
-  );
-
-  return result.rows[0] || null;
-}
-
-async function getTransaction(transactionId, client = null) {
-  const db = client || pool;
-
-  const result = await db.query(
-    `SELECT
-       le.*,
-       la.account_code,
-       la.account_name,
-       la.account_type
-     FROM ledger_entries le
-     JOIN ledger_accounts la
-       ON la.id = le.account_id
-     WHERE le.transaction_id = $1
-     ORDER BY le.id`,
-    [transactionId]
-  );
-
-  return result.rows;
-}
 
 module.exports = {
   pool,
   postLedgerTransaction,
-  getAccount,
-  getTransaction,
 };
+
+async function createPendingWithdrawalLedger({
+  transactionId,
+  tenantId,
+  reference,
+  amount,
+  client = null,
+}) {
+  const db = client || pool;
+  const numericAmount = Number(amount);
+
+  if (!transactionId || !tenantId || !reference) {
+    throw new Error('Datos de ledger de retiro incompletos');
+  }
+
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    throw new Error('Monto de retiro inválido');
+  }
+
+  const existing = await db.query(
+    `SELECT id, status
+     FROM ledger_transactions
+     WHERE idempotency_key = $1
+     LIMIT 1`,
+    [reference]
+  );
+
+  if (existing.rowCount > 0) {
+    return existing.rows[0];
+  }
+
+  const result = await db.query(
+    `INSERT INTO ledger_transactions
+      (tenant_id, operation_type, idempotency_key, status)
+     VALUES ($1, 'WITHDRAWAL', $2, 'PENDING')
+     RETURNING id, tenant_id, operation_type, idempotency_key, status`,
+    [tenantId, reference]
+  );
+
+  const ledgerTransaction = result.rows[0];
+
+  const accounts = await db.query(
+    `SELECT id, tenant_id, currency
+     FROM ledger_accounts
+     WHERE id IN (4, 5)
+     ORDER BY id`
+  );
+
+  if (accounts.rowCount !== 2) {
+    throw new Error('Cuentas de ledger requeridas no disponibles');
+  }
+
+  await db.query(
+    `INSERT INTO ledger_entries
+      (transaction_id, account_id, debit, credit)
+     VALUES
+      ($1, 4, $2, 0),
+      ($1, 5, 0, $2)`,
+    [ledgerTransaction.id, numericAmount]
+  );
+
+  return ledgerTransaction;
+}
+
+module.exports.createPendingWithdrawalLedger = createPendingWithdrawalLedger;

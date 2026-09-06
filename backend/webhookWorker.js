@@ -117,17 +117,58 @@ const MAX_ATTEMPTS = 5;
 const RETRY_DELAYS_SECONDS = [10, 30, 60, 120];
 
 async function processWebhookDeliveries() {
-  const result = await pool.query(`
-    SELECT d.id, d.webhook_id, d.payload, d.attempts, w.url
-    FROM webhook_deliveries d
-    JOIN webhooks w ON w.id = d.webhook_id
-    WHERE d.status = 'PENDING'
-      AND (d.next_attempt_at IS NULL OR d.next_attempt_at <= NOW())
-    ORDER BY d.id ASC
-    LIMIT 10
-  `);
+  const client = await pool.connect();
+  let deliveries;
 
-  for (const delivery of result.rows) {
+  try {
+    await client.query('BEGIN');
+
+    // Recuperar entregas cuyo lease de procesamiento expiró.
+    await client.query(`
+      UPDATE webhook_deliveries
+      SET status = 'PENDING',
+          next_attempt_at = NULL
+      WHERE status = 'PROCESSING'
+        AND next_attempt_at IS NOT NULL
+        AND next_attempt_at <= NOW()
+    `);
+
+    // Reclamar atómicamente hasta 10 entregas.
+    const result = await client.query(`
+      SELECT d.id, d.webhook_id, d.payload, COALESCE(d.attempts, 0) AS attempts, w.url
+      FROM webhook_deliveries d
+      JOIN webhooks w ON w.id = d.webhook_id
+      WHERE d.status = 'PENDING'
+        AND (d.next_attempt_at IS NULL OR d.next_attempt_at <= NOW())
+      ORDER BY d.id ASC
+      LIMIT 10
+      FOR UPDATE OF d SKIP LOCKED
+    `);
+
+    deliveries = result.rows;
+
+    for (const delivery of deliveries) {
+      await client.query(
+        `
+        UPDATE webhook_deliveries
+        SET status = 'PROCESSING',
+            next_attempt_at = NOW() + INTERVAL '2 minutes'
+        WHERE id = $1
+        `,
+        [delivery.id]
+      );
+    }
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  // Las llamadas HTTP se realizan fuera de cualquier transacción SQL.
+  for (const delivery of deliveries) {
     try {
       const safeWebhookUrl = await validateWebhookUrl(delivery.url);
 
@@ -142,9 +183,10 @@ async function processWebhookDeliveries() {
         `
         UPDATE webhook_deliveries
         SET status = 'SENT',
-            attempts = attempts + 1,
+            attempts = COALESCE(attempts, 0) + 1,
             next_attempt_at = NULL
         WHERE id = $1
+          AND status = 'PROCESSING'
         `,
         [delivery.id]
       );
@@ -161,6 +203,7 @@ async function processWebhookDeliveries() {
               attempts = $2,
               next_attempt_at = NULL
           WHERE id = $1
+            AND status = 'PROCESSING'
           `,
           [delivery.id, nextAttempt]
         );
@@ -170,7 +213,12 @@ async function processWebhookDeliveries() {
         );
       } else {
         const delaySeconds =
-          RETRY_DELAYS_SECONDS[Math.min(nextAttempt - 1, RETRY_DELAYS_SECONDS.length - 1)];
+          RETRY_DELAYS_SECONDS[
+            Math.min(
+              nextAttempt - 1,
+              RETRY_DELAYS_SECONDS.length - 1
+            )
+          ];
 
         await pool.query(
           `
@@ -179,6 +227,7 @@ async function processWebhookDeliveries() {
               attempts = $2,
               next_attempt_at = NOW() + ($3 * INTERVAL '1 second')
           WHERE id = $1
+            AND status = 'PROCESSING'
           `,
           [delivery.id, nextAttempt, delaySeconds]
         );
@@ -190,7 +239,7 @@ async function processWebhookDeliveries() {
     }
   }
 
-  return result.rows.length;
+  return deliveries.length;
 }
 
 module.exports = { processWebhookDeliveries };

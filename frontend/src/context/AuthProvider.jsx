@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { AuthContext } from './AuthContext';
+import { AuthContext } from './AuthContext.js';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -42,11 +42,18 @@ export function AuthProvider({ children }) {
     restoreSession();
   }, [token]);
 
-  const login = async (email, password) => {
-    const res = await axios.post(`${API}/api/auth/login`, { email, password });
+  const login = async (email, password, twoFactorCode = '', recoveryCode = '') => {
+    const res = await axios.post(`${API}/api/auth/login`, {
+      email,
+      password,
+      ...(twoFactorCode ? { twoFactorCode } : {}),
+      ...(recoveryCode ? { recoveryCode } : {})
+    });
+
     const { token, user } = res.data;
 
     localStorage.setItem('mia_token', token);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     setToken(token);
     setUser(user);
 

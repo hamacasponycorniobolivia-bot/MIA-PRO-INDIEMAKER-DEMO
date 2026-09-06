@@ -28,7 +28,7 @@ const menu = [
   { p: '/transactions', l: 'Transacciones', i: History },
   { p: '/activity', l: 'Actividad', i: Activity },
   { p: '/profile', l: 'Perfil', i: User },
-  { p: '/admin/users', l: 'Usuarios', i: Users, adminOnly: true },
+  { p: '/admin/users', l: 'Usuarios', i: Users, },
   { p: '/security', l: 'Seguridad', i: Shield },
   { p: '/settings', l: 'Configuración', i: Settings },
 ];
@@ -39,21 +39,20 @@ export default function UserLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeLanguage, setActiveLanguage] = useState(
+    () => localStorage.getItem('mia_pro_language') || i18n.resolvedLanguage || 'es'
+  );
 
   const changeGlobalLanguage = (language) => {
     if (!['es', 'en'].includes(language)) return;
 
+    setActiveLanguage(language);
     i18n.changeLanguage(language);
 
-    localStorage.setItem(
-      'mia_pro_language',
-      language
-    );
+    localStorage.setItem('mia_pro_language', language);
+    localStorage.setItem('mia_pro_settings_language', language);
 
-    localStorage.setItem(
-      'mia_pro_settings_language',
-      language
-    );
+    document.documentElement.lang = language;
 
     window.dispatchEvent(
       new CustomEvent('mia-language-change', {
@@ -221,9 +220,7 @@ export default function UserLayout() {
         </nav>
 
         {/* User section */}
-        <div className="border-t border-white/[0.07] p-4">
-
-          <div className="
+        <div className="
             mb-3 rounded-2xl
             border border-white/[0.07]
             bg-white/[0.025]
@@ -280,9 +277,8 @@ export default function UserLayout() {
             Cerrar Sesión
           </button>
 
-        </div>
-      </aside>
 
+      </aside>
       {/* MAIN */}
       <div className="relative flex min-w-0 flex-1 flex-col">
 
@@ -295,7 +291,7 @@ export default function UserLayout() {
           backdrop-blur-2xl
         ">
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
 
             <button
               onClick={() => setMobileOpen(true)}
@@ -344,9 +340,7 @@ export default function UserLayout() {
         {/* GLOBAL LANGUAGE SWITCH — CENTER */}
         <div
           className="
-            absolute left-1/2 top-1/2 z-50
-            -translate-x-1/2 -translate-y-1/2
-            flex items-center gap-2
+            relative z-50 flex items-center gap-2
             rounded-2xl
             border border-white/[0.10]
             bg-slate-950/95
@@ -359,7 +353,7 @@ export default function UserLayout() {
             type="button"
             onClick={() => changeGlobalLanguage('es')}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
-              i18n.language?.startsWith('es')
+              activeLanguage === 'es'
                 ? 'bg-emerald-400/20 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.12)]'
                 : 'text-slate-400 hover:bg-white/5 hover:text-white'
             }`}
@@ -374,7 +368,7 @@ export default function UserLayout() {
             type="button"
             onClick={() => changeGlobalLanguage('en')}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
-              i18n.language?.startsWith('en')
+              activeLanguage === 'en'
                 ? 'bg-cyan-400/20 text-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.12)]'
                 : 'text-slate-400 hover:bg-white/5 hover:text-white'
             }`}

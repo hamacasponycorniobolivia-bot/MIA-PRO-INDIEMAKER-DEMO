@@ -486,25 +486,7 @@ export default function AdminUsers() {
 
                     <td className="px-5 py-4 text-right">
 
-                      {user.role === 'SUPER_ADMIN' ? (
-
-
-                        <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-400/10 bg-emerald-400/[0.04] px-3 py-2 text-xs font-medium text-emerald-300">
-
-
-                          <Shield size={14} />
-
-
-                          {isEs ? 'Protegido' : 'Protected'}
-
-
-                        </span>
-
-
-                      ) : (
-
-
-                      <button
+                                          <button
                         onClick={() => deleteUser(user)}
                         className="inline-flex items-center gap-2 rounded-lg border border-red-400/10 bg-red-500/[0.04] px-3 py-2 text-xs font-medium text-red-400 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-300"
                       >
@@ -513,7 +495,7 @@ export default function AdminUsers() {
                       </button>
 
 
-                      )}
+
 
                     </td>
 

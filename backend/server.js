@@ -5,16 +5,22 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { Pool } = require('pg');
 const { createClient } = require('redis');
-const { deposit, withdraw } = require('./paymentService');
+const {
+  deposit,
+  createPendingWithdrawal,
+  confirmPendingWithdrawal,
+  failPendingWithdrawal,
+} = require('./paymentService');
 const authRoutes = require('./authRoutes');
 const organizationRoutes = require('./organizationRoutes');
 const webhookRoutes = require('./webhookRoutes');
 const { authenticate, requireRole } = require('./middleware');
-const { logAudit } = require('./auditService');
 const { createOutboxEvent, processOutbox } = require('./outboxService');
+const { processWebhookDeliveries } = require('./webhookWorker');
 const { register, httpRequestsTotal, httpRequestDuration } = require('./metrics');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
+const { mintNFT } = require('./web3Service');
 
 const app = express();
 
@@ -41,8 +47,20 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-const API_KEY = process.env.API_KEY;
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false
+});
 
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:4173,http://localhost:5173')
   .split(',')
@@ -70,6 +88,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/webhooks', webhookRoutes);
@@ -83,11 +102,37 @@ app.get('/metrics', async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'online' }));
 
+app.post('/api/web3/mint', authenticate, requireRole('ADMIN', 'ARTIST'), async (req, res) => {
+  const { metadataUri, recipientAddress } = req.body;
+
+  if (!metadataUri || !recipientAddress) {
+    return res.status(400).json({
+      error: 'Faltan metadataUri o recipientAddress'
+    });
+  }
+
+  try {
+    const result = await mintNFT(recipientAddress, metadataUri);
+
+    res.status(201).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('WEB3 MINT ERROR:', error.message);
+    res.status(500).json({
+      error: error.shortMessage || error.message || 'Error al mintear NFT'
+    });
+  }
+});
+
+
+
 app.get('/api/inventory/:address', async (req, res) => {
   try {
     const result = await pool.query('SELECT token_id, owner_address, created_at FROM assets WHERE owner_address ILIKE $1', [`%${req.params.address}%`]);
     res.json(result.rows);
-  } catch (error) { res.status(500).json({ error: 'Error al obtener inventario' }); }
+  } catch { res.status(500).json({ error: 'Error al obtener inventario' }); }
 });
 
 app.get('/api/listings', async (req, res) => {
@@ -144,6 +189,45 @@ app.get('/api/wallet/addresses', authenticate, async (req, res) => {
   } catch (error) {
     console.error('WALLET ADDRESSES GET ERROR:', error);
     res.status(500).json({ error: 'Error al obtener direcciones' });
+  }
+});
+
+app.delete("/api/wallet/addresses/:id", authenticate, async (req, res) => {
+  const addressId = Number(req.params.id);
+
+  if (!Number.isInteger(addressId) || addressId <= 0) {
+    return res.status(400).json({
+      error: 'ID de dirección inválido'
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `DELETE FROM wallet_addresses
+       WHERE id = $1
+         AND user_id = $2
+         AND tenant_id = (
+           SELECT tenant_id FROM users WHERE id = $2
+         )
+       RETURNING id, asset, network, address`,
+      [addressId, req.user.id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        error: 'Dirección no encontrada'
+      });
+    }
+
+    res.json({
+      success: true,
+      address: result.rows[0]
+    });
+  } catch (error) {
+    console.error('WALLET ADDRESS DELETE ERROR:', error);
+    res.status(500).json({
+      error: 'Error al eliminar dirección'
+    });
   }
 });
 
@@ -251,7 +335,7 @@ app.get('/api/wallet/:address', async (req, res) => {
     const result = await pool.query('SELECT user_address, usdc_balance FROM wallets WHERE user_address = $1', [req.params.address]);
     if (result.rowCount === 0) return res.json({ user_address: req.params.address, usdc_balance: '0' });
     res.json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: 'Error al consultar wallet' }); }
+  } catch { res.status(500).json({ error: 'Error al consultar wallet' }); }
 });
 
 // ===== WALLET: AUTENTICADO POR JWT =====
@@ -279,38 +363,144 @@ app.post('/api/wallet/deposit', authenticate, async (req, res) => {
       return res.status(500).json({ error: 'Error en depósito' });
 
     res.json({ success: true, wallet: result });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Error en depósito' });
   }
 });
 
-app.post('/api/wallet/withdraw', authenticate, async (req, res) => {
-  const { amount } = req.body;
-  if (!amount) return res.status(400).json({ error: 'Falta amount' });
+
+app.post('/api/wallet/withdraw/:transactionId/confirm', authenticate, async (req, res) => {
+  const { transactionId } = req.params;
+  const { tx_hash, block_number, confirmations } = req.body;
+
+  if (!tx_hash) {
+    return res.status(400).json({
+      success: false,
+      error: 'Falta tx_hash'
+    });
+  }
 
   try {
-    const wallet = await pool.query(
-      'SELECT user_address FROM wallets WHERE user_id = $1',
-      [req.user.id]
-    );
+    const result = await confirmPendingWithdrawal({
+      transactionId: Number(transactionId),
+      txHash: tx_hash,
+      blockNumber: block_number == null ? null : Number(block_number),
+      confirmations: confirmations == null ? 0 : Number(confirmations),
+    });
 
-    if (wallet.rowCount === 0)
-      return res.status(404).json({ error: 'Wallet no encontrada' });
-
-    const result = await withdraw(wallet.rows[0].user_address, amount);
-
-    if (!result)
-      return res.status(400).json({
-        success: false,
-        error: 'Fondos insuficientes'
-      });
-
-    res.json({ success: true, wallet: result });
+    return res.status(200).json({
+      success: true,
+      withdrawal: result,
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Error en retiro' });
+    console.error('❌ Error confirmando retiro:', error.message);
+
+    return res.status(400).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
+app.post('/api/wallet/withdraw/:transactionId/fail', authenticate, async (req, res) => {
+  const { transactionId } = req.params;
+
+  try {
+    const wallet = await pool.query(
+      `
+      SELECT user_address, tenant_id
+      FROM wallets
+      WHERE user_id = $1
+      LIMIT 1
+      `,
+      [req.user.id]
+    );
+
+    if (wallet.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Wallet no encontrada'
+      });
+    }
+
+    const result = await failPendingWithdrawal({
+      transactionId: Number(transactionId),
+      userId: req.user.id,
+      tenantId: wallet.rows[0].tenant_id,
+      address: wallet.rows[0].user_address,
+    });
+
+    return res.status(200).json({
+      success: true,
+      withdrawal: result,
+    });
+  } catch (error) {
+    console.error('❌ Error fallando retiro:', error.message);
+
+    return res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/wallet/withdraw', authenticate, async (req, res) => {
+  const { amount, to_address, reference } = req.body;
+
+  if (!amount || !to_address) {
+    return res.status(400).json({
+      error: 'Faltan amount o to_address'
+    });
+  }
+
+  const numericAmount = Number(amount);
+
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({
+      error: 'Monto inválido'
+    });
+  }
+
+  try {
+    const wallet = await pool.query(
+      `SELECT user_address, tenant_id, usdc_balance
+       FROM wallets
+       WHERE user_id = $1
+       LIMIT 1`,
+      [req.user.id]
+    );
+
+    if (wallet.rowCount === 0) {
+      return res.status(404).json({
+        error: 'Wallet no encontrada'
+      });
+    }
+
+    const withdrawalReference =
+      reference || `withdrawal_${req.user.id}_${Date.now()}`;
+
+    const pending = await createPendingWithdrawal({
+      userId: req.user.id,
+      tenantId: wallet.rows[0].tenant_id,
+      address: wallet.rows[0].user_address,
+      toAddress: to_address,
+      amount,
+      reference: withdrawalReference,
+    });
+
+    return res.status(202).json({
+      success: true,
+      withdrawal: pending,
+    });
+  } catch (error) {
+    console.error('❌ Error creando retiro PENDING:', error.message);
+
+    return res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 app.post('/api/marketplace/list', authenticate, async (req, res) => {
   const { tokenId, price } = req.body;
@@ -593,7 +783,7 @@ app.post('/api/game/entitlements', authenticate, async (req, res) => {
     );
   const cosmetics = inventory.rows.map(row => row.token_id === '1' ? { name: 'MIA Mask - Shadow', type: 'cosmetic', rarity: 'rare' } : { name: 'Common Item', type: 'cosmetic', rarity: 'common' });
   res.json({ address, cosmetics });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: "Error al obtener entitlements" });
   }
 });
@@ -685,9 +875,9 @@ app.post('/api/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async 
 
 app.get('/api/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, email, role, created_at FROM users ORDER BY id DESC');
+    const result = await pool.query('SELECT id, email, role, created_at FROM users WHERE deleted_at IS NULL ORDER BY id DESC');
     res.json(result.rows);
-  } catch (error) { res.status(500).json({ error: 'Error al obtener usuarios' }); }
+  } catch { res.status(500).json({ error: 'Error al obtener usuarios' }); }
 });
 
 app.delete('/api/users/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
@@ -699,13 +889,7 @@ app.delete('/api/users/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), 
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (target.rows[0].role === 'SUPER_ADMIN') {
-      return res.status(403).json({
-        error: 'El SUPER_ADMIN está protegido y no puede ser eliminado.'
-      });
-    }
-
-    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    await pool.query('UPDATE users SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL', [id]);
 
     res.json({ success: true, message: 'Usuario eliminado correctamente' });
   } catch (error) {
@@ -877,8 +1061,12 @@ const PORT = process.env.PORT || 3000;
 setInterval(async () => {
   try {
     const processed = await processOutbox();
+    const deliveries = await processWebhookDeliveries();
     if (processed > 0) {
       console.log(`Outbox: ${processed} evento(s) procesado(s)`);
+    }
+    if (deliveries > 0) {
+      console.log(`Webhooks: ${deliveries} entrega(s) procesada(s)`);
     }
   } catch (error) {
     console.error('Outbox worker error:', error.message);

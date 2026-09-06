@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, RefreshCw, ArrowUpRight, ArrowDownLeft, Clock3, CheckCircle2, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -97,7 +98,7 @@ function StatusBadge({ status }) {
         border: '1px solid rgba(239,68,68,.20)',
         borderRadius: 999,
         padding: '5px 9px',
-        fontSize: 12,
+        fontSize: 15,
         fontWeight: 700,
       }}>
         <XCircle size={13} />
@@ -120,7 +121,7 @@ function StatusBadge({ status }) {
         border: '1px solid rgba(245,158,11,.20)',
         borderRadius: 999,
         padding: '5px 9px',
-        fontSize: 12,
+        fontSize: 15,
         fontWeight: 700,
       }}>
         <Clock3 size={13} />
@@ -139,7 +140,7 @@ function StatusBadge({ status }) {
       border: '1px solid rgba(16,185,129,.20)',
       borderRadius: 999,
       padding: '5px 9px',
-      fontSize: 12,
+      fontSize: 15,
       fontWeight: 700,
     }}>
       <CheckCircle2 size={13} />
@@ -149,6 +150,7 @@ function StatusBadge({ status }) {
 }
 
 export default function Transactions() {
+  const { t } = useTranslation();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -183,14 +185,14 @@ export default function Transactions() {
     } catch (err) {
       console.error('Error loading transactions:', err);
       setError(
-        'No se pudieron cargar las transacciones desde el servidor.'
+        t('No se pudieron cargar las transacciones desde el servidor.')
       );
       setTransactions([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const timer = setTimeout(() => loadTransactions(), 0);
@@ -247,7 +249,7 @@ export default function Transactions() {
         <div>
           <div style={{
             color: '#94a3b8',
-            fontSize: 11,
+            fontSize: 15,
             fontWeight: 800,
             letterSpacing: '.18em',
             textTransform: 'uppercase',
@@ -262,15 +264,15 @@ export default function Transactions() {
             fontWeight: 900,
             letterSpacing: '-.03em',
           }}>
-            Historial de Transacciones
+            {t('Historial de Transacciones')}
           </h1>
 
           <p style={{
             margin: '8px 0 0',
             color: '#94a3b8',
-            fontSize: 14,
+            fontSize: 15,
           }}>
-            Consulta y supervisa las operaciones registradas en MIA Pro.
+            {t('Consulta y supervisa las operaciones registradas en MIA Pro.')}
           </p>
         </div>
 
@@ -312,8 +314,8 @@ export default function Transactions() {
           borderRadius: 16,
           padding: 18,
         }}>
-          <div style={{ color: '#94a3b8', fontSize: 12 }}>
-            Total registradas
+          <div style={{ color: '#94a3b8', fontSize: 15 }}>
+            {t('Total registradas')}
           </div>
           <div style={{
             fontSize: 28,
@@ -328,8 +330,8 @@ export default function Transactions() {
           borderRadius: 16,
           padding: 18,
         }}>
-          <div style={{ color: '#94a3b8', fontSize: 12 }}>
-            Mostrando
+          <div style={{ color: '#94a3b8', fontSize: 15 }}>
+            {t('Mostrando')}
           </div>
           <div style={{
             fontSize: 28,
@@ -344,8 +346,8 @@ export default function Transactions() {
           borderRadius: 16,
           padding: 18,
         }}>
-          <div style={{ color: '#94a3b8', fontSize: 12 }}>
-            Estado
+          <div style={{ color: '#94a3b8', fontSize: 15 }}>
+            {t('Estado')}
           </div>
           <div style={{
             color: error ? '#fca5a5' : '#6ee7b7',
@@ -353,7 +355,7 @@ export default function Transactions() {
             fontWeight: 800,
             marginTop: 10,
           }}>
-            {error ? 'API no disponible' : 'Conectado'}
+            {error ? t('API no disponible') : t('Conectado')}
           </div>
         </div>
       </div>
@@ -387,7 +389,7 @@ export default function Transactions() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar transacción, hash, asset, estado..."
+              placeholder={t('Buscar transacción, hash, asset, estado...')}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -397,7 +399,7 @@ export default function Transactions() {
                 background: 'rgba(2,6,23,.55)',
                 color: '#f8fafc',
                 outline: 'none',
-                fontSize: 13,
+                fontSize: 15,
               }}
             />
           </div>
@@ -416,7 +418,7 @@ export default function Transactions() {
                 marginBottom: 12,
               }}
             />
-            <div>Cargando transacciones...</div>
+            <div>{t('Cargando transacciones...')}</div>
           </div>
         ) : error ? (
           <div style={{
@@ -435,14 +437,14 @@ export default function Transactions() {
               margin: '0 0 8px',
               color: '#f8fafc',
             }}>
-              No se pudieron cargar las transacciones
+              {t('No se pudieron cargar las transacciones')}
             </h3>
 
             <p style={{
               margin: '0 auto 18px',
               maxWidth: 560,
               color: '#94a3b8',
-              fontSize: 14,
+              fontSize: 15,
             }}>
               {error}
             </p>
@@ -460,7 +462,7 @@ export default function Transactions() {
                 fontWeight: 700,
               }}
             >
-              Reintentar
+              {t('Reintentar')}
             </button>
           </div>
         ) : filteredTransactions.length === 0 ? (
@@ -481,18 +483,18 @@ export default function Transactions() {
               color: '#f8fafc',
             }}>
               {search
-                ? 'No hay resultados'
-                : 'Sin transacciones registradas'}
+                ? t('No hay resultados')
+                : t('Sin transacciones registradas')}
             </h3>
 
             <p style={{
               margin: 0,
               color: '#94a3b8',
-              fontSize: 14,
+              fontSize: 15,
             }}>
               {search
-                ? 'Prueba con otro término de búsqueda.'
-                : 'Las transacciones aparecerán aquí cuando existan operaciones registradas.'}
+                ? t('Prueba con otro término de búsqueda.')
+                : t('Las transacciones aparecerán aquí cuando existan operaciones registradas.')}
             </p>
           </div>
         ) : (
@@ -508,16 +510,16 @@ export default function Transactions() {
                 <tr style={{
                   borderBottom: '1px solid rgba(255,255,255,.07)',
                   color: '#64748b',
-                  fontSize: 11,
+                  fontSize: 15,
                   textTransform: 'uppercase',
                   letterSpacing: '.08em',
                 }}>
-                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>Tipo</th>
-                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>Asset</th>
-                  <th style={{ textAlign: 'right', padding: '14px 18px' }}>Cantidad</th>
-                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>Estado</th>
-                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>Referencia</th>
-                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>Fecha</th>
+                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>{t('Tipo')}</th>
+                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>{t('Asset')}</th>
+                  <th style={{ textAlign: 'right', padding: '14px 18px' }}>{t('Cantidad')}</th>
+                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>{t('Estado')}</th>
+                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>{t('Referencia')}</th>
+                  <th style={{ textAlign: 'left', padding: '14px 18px' }}>{t('Fecha')}</th>
                 </tr>
               </thead>
 
@@ -546,7 +548,7 @@ export default function Transactions() {
                           gap: 7,
                           color: outgoing ? '#fda4af' : '#6ee7b7',
                           fontWeight: 800,
-                          fontSize: 13,
+                          fontSize: 15,
                         }}>
                           {outgoing
                             ? <ArrowUpRight size={15} />
@@ -584,7 +586,7 @@ export default function Transactions() {
                         whiteSpace: 'nowrap',
                         color: '#94a3b8',
                         fontFamily: 'monospace',
-                        fontSize: 12,
+                        fontSize: 15,
                       }}>
                         {getAddress(tx)}
                       </td>
@@ -592,7 +594,7 @@ export default function Transactions() {
                       <td style={{
                         padding: '16px 18px',
                         color: '#94a3b8',
-                        fontSize: 12,
+                        fontSize: 15,
                         whiteSpace: 'nowrap',
                       }}>
                         {formatDate(

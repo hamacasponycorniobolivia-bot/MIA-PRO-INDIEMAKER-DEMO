@@ -10,11 +10,21 @@
   --mia-border-bright: rgba(255, 255, 255, 0.16);
 
   --mia-green: #10b981;
-  --mia-cyan: #06b6d4;
+  --mia-cyan: #22d3ee;
+  --mia-cyan-soft: #67e8f9;
   --mia-purple: #8b5cf6;
 
   --mia-text: #f8fafc;
-  --mia-muted: #94a3b8;
+  --mia-text-secondary: #e2e8f0;
+  --mia-muted: #aebdcd;
+
+  --mia-glow-white:
+    0 0 1px rgba(255, 255, 255, 0.75),
+    0 0 10px rgba(255, 255, 255, 0.08);
+
+  --mia-glow-cyan-text:
+    0 0 1px rgba(103, 232, 249, 0.8),
+    0 0 10px rgba(34, 211, 238, 0.18);
 
   --mia-radius: 20px;
 
@@ -75,6 +85,9 @@ body {
   min-height: 100vh;
 
   overflow-x: hidden;
+
+  font-size: 16px;
+  line-height: 1.55;
 }
 
 /* =========================
@@ -289,13 +302,14 @@ a {
    ========================================================= */
 
 .mia-text-visible {
-  text-shadow:
-    0 0 1px rgba(255, 255, 255, 0.55),
-    0 0 8px rgba(255, 255, 255, 0.08);
+  color: var(--mia-text);
+  text-shadow: var(--mia-glow-white);
+  font-weight: 500;
 }
 
 .mia-text-readable {
-  color: #cbd5e1;
+  color: var(--mia-text-secondary);
+  font-size: 1rem;
   font-weight: 500;
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.45),
@@ -303,15 +317,16 @@ a {
 }
 
 .mia-text-muted-readable {
-  color: #94a3b8;
+  color: var(--mia-muted);
+  font-size: 0.9375rem;
   font-weight: 500;
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 .mia-label-readable {
-  color: #aebdcd;
-  font-size: 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.055em;
   text-shadow:
@@ -319,8 +334,8 @@ a {
 }
 
 .mia-nav-readable {
-  color: #cbd5e1;
-  font-size: 0.9375rem;
+  color: #e2e8f0;
+  font-size: 1rem;
   font-weight: 600;
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.4),
@@ -329,7 +344,61 @@ a {
 
 .mia-heading-readable {
   color: #f8fafc;
+  font-weight: 700;
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.65),
     0 0 12px rgba(255, 255, 255, 0.08);
+}
+
+
+/* MIA PRO — GLOBAL 15PX NEON WHITE */
+.text-xs,
+.text-sm,
+.text-\[9px\],
+.text-\[10px\],
+.text-\[11px\],
+.text-\[12px\],
+.text-\[13px\],
+.text-\[14px\] {
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  color: #f8fafc !important;
+  text-shadow:
+    0 0 2px rgba(255,255,255,.95),
+    0 0 8px rgba(255,255,255,.28),
+    0 0 14px rgba(34,211,238,.12);
+}
+
+input.text-xs,
+input.text-sm,
+textarea.text-xs,
+textarea.text-sm,
+select.text-xs,
+select.text-sm,
+button.text-xs,
+button.text-sm {
+  font-size: 15px !important;
+}
+
+label.text-xs,
+label.text-sm {
+  font-size: 15px !important;
+  color: #f8fafc !important;
+  text-shadow:
+    0 0 2px rgba(255,255,255,.95),
+    0 0 8px rgba(255,255,255,.28);
+}
+
+
+
+/* MIA PRO — ADMIN SIDEBAR: texto normal, sin neón */
+.mia-admin-sidebar .text-xs,
+.mia-admin-sidebar .text-sm {
+  text-shadow: none !important;
+}
+
+/* MIA PRO — MENÚ LATERAL: texto normal, sin neón */
+.mia-sidebar-menu .text-xs,
+.mia-sidebar-menu .text-sm {
+  text-shadow: none !important;
 }

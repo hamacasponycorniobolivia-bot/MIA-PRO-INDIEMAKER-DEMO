@@ -10,19 +10,19 @@ export default function AdminOverview() {
       <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '2rem', color: '#ef4444' }}>Panel de Administración</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-        <div style={statCard('Total Usuarios', '1,240', Users, '#3b82f6')}>
+        <div style={statCard('Total Usuarios', '0', Users, '#3b82f6')}>
           <Users size={32} color="#3b82f6" style={{ marginBottom: '1rem' }} />
-          <h3 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>1,240</h3>
+          <h3 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>0</h3>
           <p style={{ color: '#94a3b8' }}>Usuarios Registrados</p>
         </div>
-        <div style={statCard('Volumen Total', '$450K', DollarSign, '#10b981')}>
+        <div style={statCard('Volumen Total', '$0', DollarSign, '#10b981')}>
           <DollarSign size={32} color="#10b981" style={{ marginBottom: '1rem' }} />
-          <h3 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>$450K</h3>
+          <h3 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>$0</h3>
           <p style={{ color: '#94a3b8' }}>En Transacciones</p>
         </div>
-        <div style={statCard('Actividad', '98%', Activity, '#f59e0b')}>
+        <div style={statCard('Actividad', '0%', Activity, '#f59e0b')}>
           <Activity size={32} color="#f59e0b" style={{ marginBottom: '1rem' }} />
-          <h3 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>98%</h3>
+          <h3 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>0%</h3>
           <p style={{ color: '#94a3b8' }}>Uptime del Sistema</p>
         </div>
       </div>

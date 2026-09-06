@@ -22,34 +22,50 @@ async function createOutboxEvent(client, eventType, payload) {
 
 // Procesar eventos pendientes (lo ejecuta un worker)
 async function processOutbox() {
-  const result = await pool.query(
-    `SELECT * FROM outbox_events WHERE status = 'PENDING' ORDER BY id ASC LIMIT 10`
-  );
+  const client = await pool.connect();
 
-  for (const event of result.rows) {
-    // Buscar webhooks que escuchen este tipo de evento
-    const webhooks = await pool.query(
-      `SELECT * FROM webhooks WHERE event_type = $1`,
-      [event.event_type]
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query(
+      `SELECT * FROM outbox_events
+       WHERE status = 'PENDING'
+       ORDER BY id ASC
+       LIMIT 10
+       FOR UPDATE SKIP LOCKED`
     );
 
-    for (const webhook of webhooks.rows) {
-      // Crear entrega de webhook
-      await pool.query(
-        `INSERT INTO webhook_deliveries (webhook_id, payload, status, attempts)
-         VALUES ($1, $2, 'PENDING', 0)`,
-        [webhook.id, event.payload]
+    for (const event of result.rows) {
+      // Buscar webhooks que escuchen este tipo de evento
+      const webhooks = await client.query(
+        `SELECT * FROM webhooks WHERE event_type = $1`,
+        [event.event_type]
+      );
+
+      for (const webhook of webhooks.rows) {
+        // Crear entrega de webhook
+        await client.query(
+          `INSERT INTO webhook_deliveries (webhook_id, payload, status, attempts)
+           VALUES ($1, $2, 'PENDING', 0)`,
+          [webhook.id, event.payload]
+        );
+      }
+
+      // Marcar evento como procesado dentro de la misma transacción
+      await client.query(
+        `UPDATE outbox_events SET status = 'PROCESSED' WHERE id = $1`,
+        [event.id]
       );
     }
 
-    // Marcar evento como procesado
-    await pool.query(
-      `UPDATE outbox_events SET status = 'PROCESSED' WHERE id = $1`,
-      [event.id]
-    );
+    await client.query('COMMIT');
+    return result.rows.length;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return result.rows.length;
 }
 
 module.exports = { createOutboxEvent, processOutbox };

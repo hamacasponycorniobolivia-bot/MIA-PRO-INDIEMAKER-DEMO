@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, RefreshCw, Activity as ActivityIcon, CheckCircle2, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -12,7 +13,7 @@ function normalize(data) {
   return [];
 }
 
-function dateOf(item) {
+function dateOf(item, language = 'es') {
   const value =
     item.created_at ??
     item.createdAt ??
@@ -25,7 +26,7 @@ function dateOf(item) {
   const d = new Date(value);
   return Number.isNaN(d.getTime())
     ? String(value)
-    : d.toLocaleString('es-ES', {
+    : d.toLocaleString(language === 'en' ? 'en-US' : 'es-ES', {
         dateStyle: 'medium',
         timeStyle: 'short',
       });
@@ -44,6 +45,7 @@ function textOf(item) {
 }
 
 export default function Activity() {
+  const { t, i18n } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,13 +74,13 @@ export default function Activity() {
       setItems(normalize(data));
     } catch (err) {
       console.error('Error loading activity:', err);
-      setError('No se pudo cargar la actividad desde el servidor.');
+      setError(t('No se pudo cargar la actividad desde el servidor.'));
       setItems([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const timer = setTimeout(() => loadActivity(), 0);
@@ -111,13 +113,13 @@ export default function Activity() {
         <div>
           <div style={{
             color: '#94a3b8',
-            fontSize: 11,
+            fontSize: 15,
             fontWeight: 800,
             letterSpacing: '.18em',
             textTransform: 'uppercase',
             marginBottom: 8,
           }}>
-            MIA Infrastructure
+            {t('MIA Infrastructure')}
           </div>
 
           <h1 style={{
@@ -125,15 +127,15 @@ export default function Activity() {
             fontSize: 32,
             fontWeight: 900,
           }}>
-            Actividad Reciente
+            {t('Actividad Reciente')}
           </h1>
 
           <p style={{
             margin: '8px 0 0',
             color: '#94a3b8',
-            fontSize: 14,
+            fontSize: 15,
           }}>
-            Registro de actividad y eventos del sistema.
+            {t('Registro de actividad y eventos del sistema.')}
           </p>
         </div>
 
@@ -174,8 +176,8 @@ export default function Activity() {
           borderRadius: 16,
           padding: 18,
         }}>
-          <div style={{ color: '#94a3b8', fontSize: 12 }}>
-            Eventos registrados
+          <div style={{ color: '#94a3b8', fontSize: 15 }}>
+            {t('Eventos registrados')}
           </div>
           <div style={{
             fontSize: 28,
@@ -190,8 +192,8 @@ export default function Activity() {
           borderRadius: 16,
           padding: 18,
         }}>
-          <div style={{ color: '#94a3b8', fontSize: 12 }}>
-            Mostrando
+          <div style={{ color: '#94a3b8', fontSize: 15 }}>
+            {t('Mostrando')}
           </div>
           <div style={{
             fontSize: 28,
@@ -226,7 +228,7 @@ export default function Activity() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar actividad, usuario, evento..."
+              placeholder={t('Buscar actividad, usuario, evento...')}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -254,7 +256,7 @@ export default function Activity() {
               }}
             />
             <div style={{ marginTop: 12 }}>
-              Cargando actividad...
+              {t('Cargando actividad...')}
             </div>
           </div>
         ) : error ? (
@@ -268,12 +270,12 @@ export default function Activity() {
             />
 
             <h3 style={{ margin: '12px 0 8px' }}>
-              No se pudo cargar la actividad
+              {t('No se pudo cargar la actividad')}
             </h3>
 
             <p style={{
               color: '#94a3b8',
-              fontSize: 14,
+              fontSize: 15,
             }}>
               {error}
             </p>
@@ -310,14 +312,14 @@ export default function Activity() {
               color: '#f8fafc',
             }}>
               {search
-                ? 'No hay resultados'
-                : 'Sin actividad registrada'}
+                ? t('No hay resultados')
+                : t('Sin actividad registrada')}
             </h3>
 
             <p style={{ margin: 0 }}>
               {search
-                ? 'Prueba con otro término de búsqueda.'
-                : 'Los eventos aparecerán aquí cuando el sistema los registre.'}
+                ? t('Prueba con otro término de búsqueda.')
+                : t('Los eventos aparecerán aquí cuando el sistema los registre.')}
             </p>
           </div>
         ) : (
@@ -331,21 +333,21 @@ export default function Activity() {
                 <tr style={{
                   borderBottom: '1px solid rgba(255,255,255,.07)',
                   color: '#64748b',
-                  fontSize: 11,
+                  fontSize: 15,
                   textTransform: 'uppercase',
                   letterSpacing: '.08em',
                 }}>
                   <th style={{ textAlign: 'left', padding: 16 }}>
-                    Actividad
+                    {t('Actividad')}
                   </th>
                   <th style={{ textAlign: 'left', padding: 16 }}>
-                    Usuario
+                    {t('Usuario')}
                   </th>
                   <th style={{ textAlign: 'left', padding: 16 }}>
-                    Estado
+                    {t('Estado')}
                   </th>
                   <th style={{ textAlign: 'left', padding: 16 }}>
-                    Fecha
+                    {t('Fecha')}
                   </th>
                 </tr>
               </thead>
@@ -397,7 +399,7 @@ export default function Activity() {
                             : 'rgba(16,185,129,.10)',
                           borderRadius: 999,
                           padding: '5px 9px',
-                          fontSize: 12,
+                          fontSize: 15,
                           fontWeight: 700,
                         }}>
                           {status.toLowerCase().includes('fail')
@@ -410,10 +412,10 @@ export default function Activity() {
                       <td style={{
                         padding: 16,
                         color: '#94a3b8',
-                        fontSize: 12,
+                        fontSize: 15,
                         whiteSpace: 'nowrap',
                       }}>
-                        {dateOf(item)}
+                        {dateOf(item, i18n.language)}
                       </td>
                     </tr>
                   );

@@ -1,6 +1,9 @@
 import { Shield, User, Mail, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function Profile() {
+  const { t } = useTranslation();
+
   const section = {
     background: 'rgba(30, 41, 59, 0.6)',
     backdropFilter: 'blur(12px)',
@@ -27,17 +30,17 @@ export default function Profile() {
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent'
       }}>
-        Preferencias
+        {t('Preferencias')}
       </h1>
 
       <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>
-        Información y configuración de tu perfil dentro de MIA Pro.
+        {t('Información y configuración de tu perfil dentro de MIA Pro.')}
       </p>
 
       <div style={section}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.4rem', marginBottom: '1.5rem' }}>
           <User size={22} className="text-indigo-400" />
-          Perfil
+          {t('Perfil')}
         </h2>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
@@ -68,14 +71,14 @@ export default function Profile() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div style={item}>
             <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
-              Nombre completo
+              {t('Nombre completo')}
             </div>
             <div>Leonardo Atilio Aquino</div>
           </div>
 
           <div style={item}>
             <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
-              Nombre de usuario
+              {t('Nombre de usuario')}
             </div>
             <div>@leo_aquino</div>
           </div>
@@ -85,16 +88,16 @@ export default function Profile() {
       <div style={section}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.4rem', marginBottom: '1.5rem' }}>
           <Mail size={22} className="text-indigo-400" />
-          Cuenta
+          {t('Cuenta')}
         </h2>
 
         <div style={item}>
           <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
-            Correo electrónico
+            {t('Correo electrónico')}
           </div>
           <div>leonardoaqui05@gmail.com</div>
           <div style={{ color: '#10b981', fontSize: '0.8rem', marginTop: '0.4rem' }}>
-            ✓ Correo verificado
+            {t('✓ Correo verificado')}
           </div>
         </div>
       </div>
@@ -102,16 +105,16 @@ export default function Profile() {
       <div style={section}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.4rem', marginBottom: '1.5rem' }}>
           <Shield size={22} className="text-emerald-400" />
-          Acceso
+          {t('Acceso')}
         </h2>
 
         <div style={item}>
           <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
-            Rol de cuenta
+            {t('Rol de cuenta')}
           </div>
           <div style={{ fontWeight: 'bold' }}>SUPER_ADMIN</div>
           <div style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.4rem' }}>
-            Cuenta con privilegios administrativos del sistema.
+            {t('Cuenta con privilegios administrativos del sistema.')}
           </div>
         </div>
       </div>
@@ -123,7 +126,7 @@ export default function Profile() {
         marginTop: '2rem'
       }}>
         <Globe size={15} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
-        MIA Pro · Perfil de usuario
+        {t('MIA Pro · Perfil de usuario')}
       </div>
     </div>
   );

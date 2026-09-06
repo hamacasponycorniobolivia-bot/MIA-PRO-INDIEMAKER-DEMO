@@ -19,7 +19,7 @@ export default function SystemStatus() {
 
   const getStatusText = (s) => {
     if (s === 'LIVE') return 'Operational';
-    if (s === 'TESTNET') return 'Testnet / Demo';
+    if (s === 'TESTNET') return 'Testnet';
     return 'Unavailable';
   };
 

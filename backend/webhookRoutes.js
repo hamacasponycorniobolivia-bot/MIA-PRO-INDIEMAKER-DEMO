@@ -132,9 +132,6 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'TENANT_OWNER', 'ADMIN
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
-  if (!url || !event_type) {
-    return res.status(400).json({ error: 'Faltan url o event_type' });
-  }
 
   try {
     const result = await pool.query(
@@ -144,7 +141,7 @@ router.post('/', authenticate, requireRole('SUPER_ADMIN', 'TENANT_OWNER', 'ADMIN
       [safeWebhookUrl, event_type]
     );
     res.status(201).json({ webhook: result.rows[0] });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Error al crear webhook' });
   }
 });
@@ -154,7 +151,7 @@ router.get('/', authenticate, requireRole('SUPER_ADMIN', 'TENANT_OWNER', 'ADMIN'
   try {
     const result = await pool.query('SELECT id, url, event_type, created_at FROM webhooks ORDER BY id DESC');
     res.json(result.rows);
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Error al obtener webhooks' });
   }
 });

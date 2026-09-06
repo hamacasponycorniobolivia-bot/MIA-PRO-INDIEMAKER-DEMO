@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
 const assetAddress = process.env.CONTRACT_ASSET;
 const pool = new Pool({
   user: process.env.DB_USER,

@@ -47,3 +47,20 @@ backend/server.log
 !/frontend/.env.example
 backend/.env
 frontend/.env
+
+# Respaldos historicos no publicar
+CLEAN_BACKUP_20260831/
+*.bak-*
+*.broken-*
+*.before_*
+*.clean-backup
+
+# Archivos de trabajo y respaldos locales
+RELEASE_FINAL_COMMIT.txt
+REPORTE_AUDITORIA_MIA_PRO.txt
+backend/backend@1.0.0
+backend/eslint
+frontend/src/App.jsx.ui_fix_backup
+frontend/src/i18n.js.GREEN_WALLET_BASE_20260903
+frontend/src/layouts/UserLayout.jsx.GREEN_ROUTING_LANGUAGE_BASE_20260903
+frontend/src/pages/Wallet.jsx.GREEN_LANGUAGE_BASE_20260903

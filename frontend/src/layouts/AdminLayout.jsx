@@ -2,16 +2,39 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LayoutDashboard, Users, Building2, Wallet, Box, ShoppingCart, Activity, FileText, ShieldCheck, Settings, LogOut, Menu, Database, Server, Download, Search, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { i18n } = useTranslation();
+  const [activeLanguage, setActiveLanguage] = useState(
+    () => localStorage.getItem('mia_pro_language') || i18n.resolvedLanguage || 'es'
+  );
+
+  const changeGlobalLanguage = (language) => {
+    if (!['es', 'en'].includes(language)) return;
+
+    setActiveLanguage(language);
+    i18n.changeLanguage(language);
+
+    localStorage.setItem('mia_pro_language', language);
+    localStorage.setItem('mia_pro_settings_language', language);
+
+    document.documentElement.lang = language;
+
+    window.dispatchEvent(
+      new CustomEvent('mia-language-change', {
+        detail: { language }
+      })
+    );
+  };
   const handleLogout = () => { logout(); navigate('/login'); };
 
   const menuItems = [
-    { path: '/admin', label: 'Overview', icon: LayoutDashboard },
+    { path: '/dashboard', label: 'Gestión Principal', icon: LayoutDashboard },
     { path: '/admin/users', label: 'Usuarios', icon: Users },
     { path: '/admin/tenants', label: 'Tenants', icon: Building2 },
     { path: '/admin/wallets', label: 'Wallets', icon: Wallet },
@@ -70,7 +93,36 @@ export default function AdminLayout() {
         <div className="absolute top-0 left-0 w-full h-[500px] bg-emerald-900/10 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
         <header className="h-20 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 flex items-center justify-between px-6 lg:px-10 sticky top-0 z-30 shadow-sm">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => changeGlobalLanguage('es')}
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all ${
+                activeLanguage === 'es'
+                  ? 'bg-emerald-400/20 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.12)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <span className="text-xl leading-none">🇪🇸</span>
+              <span>ESPAÑOL</span>
+            </button>
+
+            <div className="h-7 w-px bg-white/10" />
+
+            <button
+              type="button"
+              onClick={() => changeGlobalLanguage('en')}
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all ${
+                activeLanguage === 'en'
+                  ? 'bg-cyan-400/20 text-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.12)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <span className="text-xl leading-none">🇺🇸</span>
+              <span>ENGLISH</span>
+            </button>
+
+            <div className="h-8 w-[1px] bg-slate-800 mx-2 hidden sm:block" />
             <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"><Menu className="w-6 h-6" /></button>
             <div><h2 className="text-xl font-bold text-white tracking-tight">{menuItems.find(item => item.path === location.pathname)?.label || 'Panel de Control'}</h2><p className="text-xs text-slate-300 hidden sm:block">Bienvenido de nuevo, Administrador.</p></div>
           </div>

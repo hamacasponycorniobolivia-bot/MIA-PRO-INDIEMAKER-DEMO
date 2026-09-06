@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowUpRight,
   Activity,
@@ -10,12 +11,13 @@ import {
   ShoppingBag,
   Zap,
   ShieldCheck,
-  TrendingUp,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [marketplace, setMarketplace] = useState([]);
 
@@ -36,56 +38,56 @@ export default function Dashboard() {
     transactions: 0,
   });
 
-  useEffect(() => {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadDashboard = async () => {
     const API =
       import.meta.env.VITE_API_URL ||
       'http://localhost:3000';
 
-    const loadDashboard = async () => {
-      try {
-        const response = await axios.get(`${API}/api/listings`);
+    try {
+      const [, walletResponse] = await Promise.all([
+        axios.get(`${API}/api/listings`),
+        axios.get(`${API}/api/wallet/me`).catch(() => null),
+      ]);
 
-        const listings = Array.isArray(response.data)
-          ? response.data
-          : [];
+      const realBalance =
+        walletResponse?.data?.wallet?.usdc_balance ?? '0.00';
 
-        const visibleListings = listings.length > 0
-          ? listings
-          : [{
-              token_id: 'MIA-PRO-TEST-001',
-              seller_address: '0xMIA_USER_36_1787943418074',
-              price_wei: '25'
-            }];
+      setMarketplace([]);
 
-        setMarketplace(visibleListings);
+      setStats({
+        balance: realBalance,
+        assets: 0,
+        listings: 0,
+        transactions: 0,
+      });
+    } catch (err) {
+      console.error('Marketplace error:', err);
 
-        setStats({
-          balance: '2,450.00',
-          assets: 12,
-          listings: visibleListings.length,
-          transactions: 48,
-        });
-      } catch (err) {
-        console.error('Marketplace error:', err);
+      setMarketplace([]);
 
-        const fallbackListing = [{
-          token_id: 'MIA-PRO-TEST-001',
-          seller_address: '0xMIA_USER_36_1787943418074',
-          price_wei: '25'
-        }];
+      setStats({
+        balance: '0.00',
+        assets: 0,
+        listings: 0,
+        transactions: 0,
+      });
+    }
+  };
 
-        setMarketplace(fallbackListing);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadDashboard();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-        setStats({
-          balance: '2,450.00',
-          assets: 12,
-          listings: 1,
-          transactions: 48,
-        });
-      }
-    };
-
-    loadDashboard();
+  useEffect(() => {
+    const timer = setTimeout(() => loadDashboard(), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const username =
@@ -148,7 +150,7 @@ export default function Dashboard() {
               backdrop-blur-xl
             ">
               <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                📅 Fecha
+                {'📅 '}{t('Fecha')}
               </div>
 
               <div className="mt-1 text-sm font-semibold text-white">
@@ -164,7 +166,7 @@ export default function Dashboard() {
               backdrop-blur-xl
             ">
               <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                🕐 Hora local
+                {'🕐 '}{t('Hora local')}
               </div>
 
               <div className="mt-1 text-sm font-semibold text-emerald-300">
@@ -225,7 +227,7 @@ export default function Dashboard() {
               <div>
                 <div className="
                   mb-3 flex items-center gap-2
-                  text-[10px] font-bold uppercase
+                  text-sm font-black uppercase
                   tracking-[0.25em] text-emerald-400/70
                 ">
                   <span className="
@@ -233,14 +235,14 @@ export default function Dashboard() {
                     bg-emerald-400
                     shadow-[0_0_10px_rgba(52,211,153,0.9)]
                   " />
-                  MIA PRO CONTROL CENTER
+                  {t('MIA PRO CONTROL CENTER')}
                 </div>
 
                 <h1 className="
                   text-3xl font-black tracking-tight
                   text-white sm:text-4xl lg:text-5xl
                 ">
-                  Hola,{' '}
+                  {t('Hola,')}{' '}
                   <span className="
                     bg-gradient-to-r
                     from-emerald-300
@@ -256,9 +258,9 @@ export default function Dashboard() {
                   mt-3 max-w-2xl
                   text-sm leading-6 text-slate-400 sm:text-base
                 ">
-                  Tu infraestructura Web3 está operativa.
-                  Gestiona activos, wallet, marketplace y
-                  actividad desde un solo centro de control.
+                  {t('Tu infraestructura Web3 está operativa.')}
+                  {t('Gestiona activos, wallet, marketplace y')}
+                  {t('actividad desde un solo centro de control.')}
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-3">
@@ -269,11 +271,11 @@ export default function Dashboard() {
                     border border-emerald-400/15
                     bg-emerald-400/[0.045]
                     px-3 py-1.5
-                    text-[10px] font-bold uppercase
-                    tracking-wider text-emerald-300
+                    text-sm font-black uppercase
+                  drop-shadow-[0_0_7px_rgba(103,232,249,0.35)]
                   ">
                     <ShieldCheck size={13} />
-                    Infraestructura protegida
+                    {t('Infraestructura protegida')}
                   </div>
 
                   <div className="
@@ -282,11 +284,11 @@ export default function Dashboard() {
                     border border-cyan-400/10
                     bg-cyan-400/[0.035]
                     px-3 py-1.5
-                    text-[10px] font-bold uppercase
-                    tracking-wider text-cyan-300/80
+                    tracking-wider text-white
+                  drop-shadow-[0_0_7px_rgba(255,255,255,0.28)]
                   ">
                     <Zap size={13} />
-                    Sistema activo
+                    {t('Sistema activo')}
                   </div>
 
                 </div>
@@ -319,7 +321,7 @@ export default function Dashboard() {
 
                 <Wallet size={18} />
 
-                <span>Gestionar Wallet</span>
+                <span>{t('Gestionar Wallet')}</span>
 
                 <ArrowUpRight
                   size={17}
@@ -345,24 +347,42 @@ export default function Dashboard() {
           ">
             <div>
               <div className="
-                text-[10px] font-bold uppercase
+                text-sm font-black uppercase
                 tracking-[0.22em] text-slate-600
               ">
-                Overview
+                {t('Overview')}
               </div>
 
               <h2 className="
                 mt-1 text-xl font-bold text-white
               ">
-                Resumen de cuenta
+                {t('Resumen de cuenta')}
               </h2>
             </div>
 
-            <div className="
-              hidden text-xs text-slate-600 sm:block
-            ">
-              Actualizado ahora
-            </div>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="
+                hidden sm:inline-flex items-center gap-2
+                rounded-xl
+                border border-emerald-400/20
+                bg-emerald-400/[0.06]
+                px-4 py-2
+                text-sm font-semibold text-emerald-300
+                shadow-[0_0_18px_rgba(16,185,129,0.06)]
+                transition-all duration-200
+                hover:border-emerald-400/40
+                hover:bg-emerald-400/[0.12]
+                hover:text-emerald-200
+                hover:shadow-[0_0_22px_rgba(16,185,129,0.10)]
+                disabled:cursor-wait disabled:opacity-60
+              "
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>{refreshing ? t('Actualizando') : t('Actualizar')}</span>
+            </button>
           </div>
 
           <div className="
@@ -373,41 +393,33 @@ export default function Dashboard() {
 
             <StatCard
               icon={Wallet}
-              label="Balance Total"
-              value={`$${stats.balance}`}
-              suffix="USDC"
-              trend="+12.5%"
-              trendText="este mes"
+              label={t("Balance Total")}
+              value="—"
+              suffix=""
               color="emerald"
             />
 
             <StatCard
               icon={Box}
-              label="Mis Activos"
+              label={t("Mis Activos")}
               value={stats.assets}
               suffix="NFTs"
-              trend="+3"
-              trendText="esta semana"
               color="cyan"
             />
 
             <StatCard
               icon={ShoppingBag}
-              label="Listings Activos"
+              label={t("Listings Activos")}
               value={stats.listings}
-              suffix="activos"
-              trend="+100%"
-              trendText="verificados"
+              suffix={t("activos")}
               color="violet"
             />
 
             <StatCard
               icon={Activity}
-              label="Transacciones"
+              label={t("Transacciones")}
               value={stats.transactions}
-              suffix="total"
-              trend="+8"
-              trendText="este mes"
+              suffix={t("total")}
               color="blue"
             />
 
@@ -456,13 +468,13 @@ export default function Dashboard() {
                     size={16}
                     className="text-emerald-400"
                   />
-                  Actividad Reciente
+                  {t('Actividad Reciente')}
                 </div>
 
                 <p className="
                   mt-1 text-xs text-slate-600
                 ">
-                  Últimos movimientos de tu cuenta
+                  {t('Últimos movimientos de tu cuenta')}
                 </p>
               </div>
 
@@ -474,7 +486,7 @@ export default function Dashboard() {
                   border border-white/[0.06]
                   bg-white/[0.025]
                   px-3 py-2
-                  text-[10px] font-bold uppercase
+                  text-sm font-black uppercase
                   tracking-wider text-slate-500
                   transition
                   hover:border-emerald-400/15
@@ -482,49 +494,20 @@ export default function Dashboard() {
                   hover:text-emerald-300
                 "
               >
-                Ver todo
+                {t('Ver todo')}
                 <ExternalLink size={12} />
               </Link>
             </div>
 
             <div className="p-4 sm:p-5">
-
-              <ActivityRow
-                icon="NFT"
-                title="MIA-PRO-TEST-001"
-                description="Marketplace · Activo"
-                time="Publicado ahora"
-                amount="+25 USDC"
-                positive
-              />
-
-              <ActivityRow
-                icon="TX"
-                title="Listing disponible"
-                description="Marketplace · Vendedor registrado"
-                time="Ahora"
-                amount="25 USDC"
-                positive
-              />
-
-              <ActivityRow
-                icon="L"
-                title="Activo publicado"
-                description="Marketplace · Disponible"
-                time="Activo ahora"
-                amount="MIA-PRO-TEST-001"
-                positive
-              />
-
-              <ActivityRow
-                icon="TX"
-                title="Marketplace operativo"
-                description="Wallet · Confirmado"
-                time="Ayer"
-                amount="1 activo"
-                positive={false}
-                last
-              />
+            <div className="py-8 text-center">
+              <div className="text-base font-semibold text-slate-200">
+                {t('No hay actividad reciente')}
+              </div>
+              <div className="mt-2 text-sm text-slate-400">
+                {t('Las operaciones reales aparecerán aquí cuando existan.')}
+              </div>
+            </div>
 
             </div>
           </div>
@@ -556,16 +539,16 @@ export default function Dashboard() {
             ">
               <div>
                 <div className="
-                  text-[10px] font-bold uppercase
+                  text-sm font-black uppercase
                   tracking-[0.2em] text-slate-600
                 ">
-                  Infrastructure
+                  {t('Infrastructure')}
                 </div>
 
                 <h2 className="
                   mt-1 text-lg font-bold text-white
                 ">
-                  Estado del sistema
+                  {t('Estado del sistema')}
                 </h2>
               </div>
 
@@ -585,7 +568,7 @@ export default function Dashboard() {
                   text-[9px] font-bold uppercase
                   tracking-wider text-emerald-300
                 ">
-                  Operational
+                  {t('Operational')}
                 </span>
               </div>
             </div>
@@ -595,68 +578,25 @@ export default function Dashboard() {
             ">
 
               <SystemRow
-                name="API Gateway"
-                value="Operational"
+                name={t("API Gateway")}
+                value={t("Operational")}
               />
 
               <SystemRow
-                name="Database"
-                value="Operational"
+                name={t("Database")}
+                value={t("Operational")}
               />
 
               <SystemRow
-                name="Blockchain"
-                value="Operational"
+                name={t("Blockchain")}
+                value={t("Operational")}
               />
 
               <SystemRow
-                name="Marketplace"
-                value="Operational"
+                name={t("Marketplace")}
+                value={t("Operational")}
               />
 
-            </div>
-
-            <div className="
-              relative mt-6
-              rounded-2xl
-              border border-white/[0.06]
-              bg-black/20
-              p-4
-            ">
-              <div className="
-                flex items-center justify-between
-              ">
-                <div className="
-                  flex items-center gap-2
-                  text-xs font-semibold text-slate-300
-                ">
-                  <TrendingUp
-                    size={14}
-                    className="text-emerald-400"
-                  />
-                  Network Health
-                </div>
-
-                <span className="
-                  text-sm font-black text-emerald-300
-                ">
-                  99.98%
-                </span>
-              </div>
-
-              <div className="
-                mt-3 h-1.5 overflow-hidden
-                rounded-full bg-white/[0.05]
-              ">
-                <div className="
-                  h-full w-[99.98%]
-                  rounded-full
-                  bg-gradient-to-r
-                  from-emerald-500
-                  to-cyan-400
-                  shadow-[0_0_15px_rgba(16,185,129,0.45)]
-                " />
-              </div>
             </div>
 
           </div>
@@ -692,7 +632,7 @@ export default function Dashboard() {
               </div>
 
               <p className="mt-1 text-xs text-slate-500">
-                Activos publicados actualmente
+                {t('Activos publicados actualmente')}
               </p>
             </div>
 
@@ -715,10 +655,10 @@ export default function Dashboard() {
                 className="mx-auto text-slate-600"
               />
               <div className="mt-3 text-sm font-semibold text-slate-400">
-                No hay listings disponibles
+                {t('No hay listings disponibles')}
               </div>
               <div className="mt-1 text-xs text-slate-600">
-                El marketplace no tiene activos publicados.
+                {t('El marketplace no tiene activos publicados.')}
               </div>
             </div>
           ) : (
@@ -760,13 +700,14 @@ export default function Dashboard() {
                       text-[9px] font-bold uppercase
                       tracking-wider text-emerald-300
                     ">
-                      Activo
+                      {t('Activo')}
                     </span>
                   </div>
 
                   <div className="
-                    mt-5 text-[9px] font-bold uppercase
-                    tracking-[0.18em] text-slate-600
+                    mt-5 text-sm font-bold uppercase
+                    tracking-[0.18em] text-slate-200
+                    drop-shadow-[0_0_6px_rgba(255,255,255,0.18)]
                   ">
                     Token
                   </div>
@@ -788,7 +729,7 @@ export default function Dashboard() {
                       text-[9px] uppercase
                       tracking-wider text-slate-600
                     ">
-                      Precio
+                      {t('Precio')}
                     </div>
 
                     <div className="
@@ -812,7 +753,7 @@ export default function Dashboard() {
                     mt-4 truncate
                     text-[9px] text-slate-600
                   ">
-                    Seller: {listing.seller_address || '—'}
+                    {t('Seller:')} {listing.seller_address || '—'}
                   </div>
                 </div>
               ))}
@@ -835,9 +776,7 @@ function StatCard({
   label,
   value,
   suffix,
-  trend,
-  trendText,
-  color,
+color,
 }) {
   const colors = {
     emerald: {
@@ -903,25 +842,13 @@ function StatCard({
         `}>
           <Icon size={18} />
         </div>
-
-        <div className="
-          flex items-center gap-1
-          rounded-full
-          bg-emerald-400/[0.045]
-          px-2 py-1
-          text-[9px] font-bold
-          text-emerald-300
-        ">
-          <ArrowUpRight size={10} />
-          {trend}
-        </div>
       </div>
 
       <div className="
-        mt-5 text-[10px]
+        mt-5 text-[11px]
         font-bold uppercase
         tracking-[0.18em]
-        text-slate-600
+        text-cyan-300
       ">
         {label}
       </div>
@@ -930,146 +857,30 @@ function StatCard({
         mt-1 flex items-baseline gap-2
       ">
         <span className="
-          text-3xl font-black
+          text-4xl font-black
           tracking-tight text-white
         ">
           {value}
         </span>
 
         <span className="
-          text-[10px] font-semibold
+          text-xs font-bold
           uppercase tracking-wider
-          text-slate-600
+          text-white
         ">
           {suffix}
         </span>
       </div>
 
-      <div className="
-        mt-3 flex items-center gap-1.5
-        text-[10px] text-slate-600
-      ">
-        <span className="text-emerald-400/80">
-          {trend}
-        </span>
-        {trendText}
-      </div>
-
     </div>
   );
 }
-
-/* ============================================================
-   ACTIVITY ROW
-============================================================ */
-
-function ActivityRow({
-  icon,
-  title,
-  description,
-  time,
-  amount,
-  positive,
-  last,
-}) {
-  return (
-    <div className={`
-      group flex items-center gap-4
-      rounded-2xl p-3
-      transition-all duration-300
-      hover:bg-white/[0.025]
-      ${!last ? 'border-b border-white/[0.045]' : ''}
-    `}>
-
-      <div className="
-        relative flex h-11 w-11
-        shrink-0 items-center justify-center
-        rounded-xl
-        border border-white/[0.07]
-        bg-black/20
-        text-[9px] font-black
-        text-emerald-300
-        shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
-        transition-all duration-300
-        group-hover:border-emerald-400/15
-        group-hover:bg-emerald-400/[0.04]
-      ">
-        {icon}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="
-          truncate text-xs font-bold
-          text-slate-200
-        ">
-          {title}
-        </div>
-
-        <div className="
-          mt-1 truncate text-[10px]
-          text-slate-600
-        ">
-          {description}
-        </div>
-      </div>
-
-      <div className="
-        hidden text-right sm:block
-      ">
-        <div className={`
-          text-xs font-bold
-          ${positive ? 'text-emerald-300' : 'text-slate-400'}
-        `}>
-          {amount}
-        </div>
-
-        <div className="
-          mt-1 text-[9px]
-          text-slate-600
-        ">
-          {time}
-        </div>
-      </div>
-
-    </div>
-  );
-}
-
-/* ============================================================
-   SYSTEM ROW
-============================================================ */
 
 function SystemRow({ name, value }) {
   return (
-    <div className="
-      flex items-center justify-between
-      rounded-xl
-      border border-white/[0.045]
-      bg-black/15
-      px-4 py-3
-    ">
-      <div className="
-        flex items-center gap-3
-      ">
-        <span className="
-          h-1.5 w-1.5 rounded-full
-          bg-emerald-400
-          shadow-[0_0_8px_rgba(52,211,153,0.8)]
-        " />
-
-        <span className="
-          text-xs font-medium
-          text-slate-400
-        ">
-          {name}
-        </span>
-      </div>
-
-      <span className="
-        text-[9px] font-bold
-        uppercase tracking-wider
-        text-emerald-400/80
-      ">
+    <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+      <span className="text-sm text-slate-300">{name}</span>
+      <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
         {value}
       </span>
     </div>

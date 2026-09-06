@@ -23,10 +23,8 @@ import {
 } from 'lucide-react';
 
 const STORAGE_KEY = 'mia_pro_settings';
-const LANGUAGE_KEY = 'mia_pro_language';
 
 const defaultSettings = {
-  language: 'en',
   timezone: 'America/La_Paz',
   dateFormat: 'DD/MM/YYYY',
   theme: 'dark',
@@ -240,55 +238,6 @@ export default function Settings() {
   const isEs = i18n.language?.startsWith('es');
 
   useEffect(() => {
-    const storedLanguage =
-      localStorage.getItem(LANGUAGE_KEY) ||
-      settings.language ||
-      'en';
-
-    if (
-      ['es', 'en'].includes(storedLanguage) &&
-      i18n.language !== storedLanguage
-    ) {
-      i18n.changeLanguage(storedLanguage);
-    }
-
-    const handleExternalLanguageChange = (event) => {
-      const language = event.detail?.language;
-
-      if (!['es', 'en'].includes(language)) return;
-
-      i18n.changeLanguage(language);
-
-      setSettings((current) => ({
-        ...current,
-        language,
-      }));
-    };
-
-    window.addEventListener(
-      'mia-language-change',
-      handleExternalLanguageChange
-    );
-
-    return () => {
-      window.removeEventListener(
-        'mia-language-change',
-        handleExternalLanguageChange
-      );
-    };
-  }, [settings.language, i18n]);
-
-  useEffect(() => {
-    localStorage.setItem(LANGUAGE_KEY, settings.language);
-  }, [settings.language]);
-
-  useEffect(() => {
-    if (settings.language && i18n.language !== settings.language) {
-      i18n.changeLanguage(settings.language);
-    }
-  }, [settings.language, i18n]);
-
-  useEffect(() => {
     const root = document.documentElement;
 
     root.classList.toggle(
@@ -314,28 +263,10 @@ export default function Settings() {
     setSaved(false);
   };
 
-  const changeLanguage = (language) => {
-    update('language', language);
-    i18n.changeLanguage(language);
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        ...settings,
-        language,
-      })
-    );
-  };
-
   const handleSave = () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify(settings)
-    );
-
-    localStorage.setItem(
-      LANGUAGE_KEY,
-      settings.language
     );
 
     window.dispatchEvent(
@@ -343,8 +274,6 @@ export default function Settings() {
         detail: settings,
       })
     );
-
-    i18n.changeLanguage(settings.language);
 
     setSaved(true);
 
@@ -363,7 +292,6 @@ export default function Settings() {
     ) {
       setSettings(defaultSettings);
       localStorage.removeItem(STORAGE_KEY);
-      i18n.changeLanguage(defaultSettings.language);
       document.documentElement.classList.remove('mia-light-mode');
       setSaved(false);
     }
@@ -491,25 +419,8 @@ export default function Settings() {
             : 'Language, region and formats used by MIA.'
         }
       >
-        <Row
-          icon={Globe}
-          title={isEs ? 'Idioma' : 'Language'}
-          description={
-            isEs
-              ? 'Idioma principal de la interfaz.'
-              : 'Primary interface language.'
-          }
-        >
-          <Select
-            value={settings.language}
-            onChange={changeLanguage}
-          >
-            <option value="es">Español</option>
-            <option value="en">English</option>
-          </Select>
-        </Row>
 
-        <Row
+<Row
           icon={Globe}
           title={isEs ? 'Zona horaria' : 'Time zone'}
           description={

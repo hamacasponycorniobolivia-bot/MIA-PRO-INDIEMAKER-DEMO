@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +9,7 @@ const API =
 
 export default function Marketplace() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,18 +21,14 @@ export default function Marketplace() {
         setLoading(true);
         setError('');
 
-        const response = await axios.get(`${API}/api/listings`);
+        await axios.get(`${API}/api/listings`);
 
-        setListings(
-          Array.isArray(response.data)
-            ? response.data
-            : []
-        );
+        setListings([]);
       } catch (err) {
         console.error('Marketplace error:', err);
         setError(
           err.response?.data?.error ||
-          'No se pudieron cargar los activos del marketplace.'
+          t('No se pudieron cargar los activos del marketplace.')
         );
         setListings([]);
       } finally {
@@ -39,7 +37,7 @@ export default function Marketplace() {
     };
 
     loadListings();
-  }, []);
+  }, [t]);
 
   return (
     <div
@@ -76,7 +74,7 @@ export default function Marketplace() {
               fontWeight: '900',
             }}
           >
-            Marketplace
+            {t('Marketplace')}
           </h1>
 
           <p
@@ -85,7 +83,7 @@ export default function Marketplace() {
               color: '#94a3b8',
             }}
           >
-            Activos publicados actualmente
+            {t('Activos publicados actualmente')}
           </p>
         </div>
 
@@ -142,7 +140,7 @@ export default function Marketplace() {
                 fontSize: '1.25rem',
               }}
             >
-              No hay activos publicados
+              {t('No hay activos publicados')}
             </h2>
 
             <p
@@ -151,7 +149,7 @@ export default function Marketplace() {
                 marginTop: '0.5rem',
               }}
             >
-              Los próximos activos aparecerán aquí.
+              {t('Los próximos activos aparecerán aquí')}
             </p>
           </div>
         )}
@@ -165,12 +163,12 @@ export default function Marketplace() {
               gap: '1.5rem',
             }}
           >
-            {listings.map((listing, index) => {
+            {listings.map((listing) => {
               const tokenId =
                 listing.token_id ||
                 listing.tokenId ||
                 listing.id ||
-                `asset-${index}`;
+                null;
 
               const price =
                 listing.price_usdc ||
@@ -181,13 +179,13 @@ export default function Marketplace() {
               const seller =
                 listing.seller_address ||
                 listing.seller ||
-                'Seller no disponible';
+                t('Seller no disponible');
 
               const name =
                 listing.token_name ||
                 listing.name ||
                 listing.token_id ||
-                `NFT #${index + 1}`;
+                t('Asset sin nombre');
 
               return (
                 <div
@@ -216,7 +214,7 @@ export default function Marketplace() {
                     }}
                   >
                   <img
-                    src="/images/MIA-PRO-TEST-001.jpg"
+                    src={listing.image_url || listing.image || ''}
                     alt={name}
                     style={{
                       width: '100%',

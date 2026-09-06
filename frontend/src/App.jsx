@@ -48,16 +48,15 @@ function App() {
         <Routes>
 
           {/* ==================== PÚBLICAS ==================== */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
           {/* ==================== ÁREA DE USUARIO ==================== */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<UserLayout />}>
+            <Route element={<UserLayout />}>
 
-              <Route index element={<Navigate to="/dashboard" replace />} />
-
-              <Route path="dashboard" element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
               <Route path="marketplace" element={<Marketplace />} />
               <Route path="assets" element={<Assets />} />
               <Route path="wallet" element={<Wallet />} />

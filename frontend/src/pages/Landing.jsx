@@ -21,7 +21,7 @@ export default function Landing() {
 
       {/* Hero Section */}
       <header style={{ textAlign: 'center', padding: '6rem 2rem 4rem', maxWidth: '800px', margin: '0 auto', flex: 1 }}>
-        <span style={{ color: 'var(--accent)', fontSize: '0.875rem', fontWeight: '600', letterSpacing: '1px' }}>MIA V1.1</span>
+        <span style={{ color: 'var(--accent)', fontSize: '0.875rem', fontWeight: '600', letterSpacing: '1px' }}>MIA Pro V1.0 RC FINAL</span>
         <h2 style={{ fontSize: '3.5rem', margin: '1rem 0', lineHeight: '1.1' }}>Own your MIA.</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.25rem', marginBottom: '2rem' }}>
           Compra, vende y administra tus activos digitales desde un solo lugar.
