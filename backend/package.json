@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -38,5 +39,8 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.9.1"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

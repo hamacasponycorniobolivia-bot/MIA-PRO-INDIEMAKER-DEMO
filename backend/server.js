@@ -3,7 +3,6 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const { Pool } = require('pg');
 const { createClient } = require('redis');
 const {
   deposit,
@@ -14,6 +13,8 @@ const {
 const authRoutes = require('./authRoutes');
 const organizationRoutes = require('./organizationRoutes');
 const webhookRoutes = require('./webhookRoutes');
+const appsumoRoutes = require('./appsumoRoutes');
+const pool = require('./db');
 const { authenticate, requireRole } = require('./middleware');
 const { createOutboxEvent, processOutbox } = require('./outboxService');
 const { processWebhookDeliveries } = require('./webhookWorker');
@@ -39,14 +40,6 @@ redis.connect().catch((err) => {
   console.error('Redis connection failed:', err.message);
 });
 app.use(helmet());
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
-
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -76,7 +69,13 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    if (req.originalUrl === '/api/appsumo/webhook') {
+      req.rawBody = Buffer.from(buf);
+    }
+  }
+}));
 app.use(limiter);
 
 app.use((req, res, next) => {
@@ -92,6 +91,7 @@ app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/appsumo', appsumoRoutes);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -130,7 +130,15 @@ app.post('/api/web3/mint', authenticate, requireRole('ADMIN', 'ARTIST'), async (
 
 app.get('/api/inventory/:address', async (req, res) => {
   try {
-    const result = await pool.query('SELECT token_id, owner_address, created_at FROM assets WHERE owner_address ILIKE $1', [`%${req.params.address}%`]);
+    const address = String(req.params.address || '').trim();
+    if (!address || address.length > 255) {
+      return res.status(400).json({ error: 'Dirección inválida' });
+    }
+
+    const result = await pool.query(
+      'SELECT token_id, owner_address, created_at FROM assets WHERE LOWER(owner_address) = LOWER($1)',
+      [address]
+    );
     res.json(result.rows);
   } catch { res.status(500).json({ error: 'Error al obtener inventario' }); }
 });
@@ -330,12 +338,24 @@ app.get('/api/wallet/me', authenticate, async (req, res) => {
   }
 });
 
-app.get('/api/wallet/:address', async (req, res) => {
+app.get('/api/wallet/:address', authenticate, async (req, res) => {
   try {
-    const result = await pool.query('SELECT user_address, usdc_balance FROM wallets WHERE user_address = $1', [req.params.address]);
-    if (result.rowCount === 0) return res.json({ user_address: req.params.address, usdc_balance: '0' });
+    const result = await pool.query(
+      `SELECT user_address, usdc_balance
+       FROM wallets
+       WHERE user_id = $1
+         AND LOWER(user_address) = LOWER($2)`,
+      [req.user.id, req.params.address]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Wallet no encontrada' });
+    }
+
     res.json(result.rows[0]);
-  } catch { res.status(500).json({ error: 'Error al consultar wallet' }); }
+  } catch {
+    res.status(500).json({ error: 'Error al consultar wallet' });
+  }
 });
 
 // ===== WALLET: AUTENTICADO POR JWT =====
@@ -384,6 +404,8 @@ app.post('/api/wallet/withdraw/:transactionId/confirm', authenticate, async (req
     const result = await confirmPendingWithdrawal({
       transactionId: Number(transactionId),
       txHash: tx_hash,
+      userId: req.user.id,
+      tenantId: req.user.tenant_id,
       blockNumber: block_number == null ? null : Number(block_number),
       confirmations: confirmations == null ? 0 : Number(confirmations),
     });
@@ -924,7 +946,8 @@ app.get('/api/admin/stats', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), a
 app.get('/api/admin/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, role, tenant_id, created_at FROM users ORDER BY id DESC'
+      'SELECT id, email, role, tenant_id, created_at FROM users WHERE tenant_id = $1 ORDER BY id DESC',
+      [req.user.tenant_id]
     );
     res.json(result.rows);
   } catch (error) {
@@ -936,7 +959,8 @@ app.get('/api/admin/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), a
 app.get('/api/admin/audit-logs', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100'
+      'SELECT * FROM audit_logs WHERE tenant_id = $1 ORDER BY id DESC LIMIT 100',
+      [req.user.tenant_id]
     );
     res.json(result.rows);
   } catch (error) {
@@ -971,13 +995,19 @@ app.post(
   requireRole('SUPER_ADMIN', 'ADMIN'),
   async (req, res) => {
     try {
-      const backupPath = req.body?.path?.trim();
+      const requestedPath = req.body?.path?.trim();
+      const backupRoot = path.resolve(__dirname, 'backups');
 
-      if (!backupPath) {
+      if (!requestedPath) {
         return res.status(400).json({
           error: 'Debes indicar la ruta donde guardar el backup'
         });
       }
+
+      const backupPath = path.resolve(
+        backupRoot,
+        path.basename(requestedPath)
+      );
 
       const backupScript = path.join(__dirname, 'backup.sh');
 
@@ -1016,11 +1046,23 @@ app.post(
   requireRole('SUPER_ADMIN', 'ADMIN'),
   async (req, res) => {
     try {
-      const backupPath = req.body?.path?.trim();
+      const requestedPath = req.body?.path?.trim();
+      const backupRoot = path.resolve(__dirname, 'backups');
 
-      if (!backupPath) {
+      if (!requestedPath) {
         return res.status(400).json({
           error: 'Debes indicar la ruta del backup'
+        });
+      }
+
+      const backupPath = path.resolve(
+        backupRoot,
+        path.basename(requestedPath)
+      );
+
+      if (path.extname(backupPath).toLowerCase() != '.dump') {
+        return res.status(400).json({
+          error: 'El archivo debe tener extensión .dump'
         });
       }
 

@@ -413,12 +413,12 @@ async function createPendingWithdrawal({
     const ledgerResult = await client.query(
       `
       INSERT INTO ledger_transactions
-        (tenant_id, operation_type, idempotency_key, status)
+        (tenant_id, user_id, operation_type, idempotency_key, status)
       VALUES
-        ($1, 'WITHDRAWAL', $2, 'PENDING')
-      RETURNING id, tenant_id, operation_type, idempotency_key, status
+        ($1, $2, 'WITHDRAWAL', $3, 'PENDING')
+      RETURNING id, tenant_id, user_id, operation_type, idempotency_key, status
       `,
-      [tenantId, reference]
+      [tenantId, userId, reference]
     );
 
     const ledgerTransaction = ledgerResult.rows[0];
@@ -471,11 +471,13 @@ async function createPendingWithdrawal({
 async function confirmPendingWithdrawal({
   transactionId,
   txHash,
+  userId,
+  tenantId,
   blockNumber = null,
   confirmations = 0,
 }) {
-  if (!transactionId || !txHash) {
-    throw new Error('transactionId y txHash son obligatorios');
+  if (!transactionId || !txHash || !userId || !tenantId) {
+    throw new Error('transactionId, txHash, userId y tenantId son obligatorios');
   }
 
   const client = await pool.connect();
@@ -485,12 +487,14 @@ async function confirmPendingWithdrawal({
 
     const txResult = await client.query(
       `
-      SELECT id, tenant_id, operation_type, status
+      SELECT id, tenant_id, user_id, operation_type, status
       FROM ledger_transactions
       WHERE id = $1
+      AND user_id = $2
+      AND tenant_id = $3
       FOR UPDATE
       `,
-      [transactionId]
+      [transactionId, userId, tenantId]
     );
 
     if (txResult.rowCount === 0) {
