@@ -55,6 +55,13 @@ function verifyAppSumoSignature(req) {
 }
 
 router.post('/webhook', async (req, res) => {
+  if (req.body && req.body.test === true) {
+    return res.status(200).json({
+      event: req.body.event,
+      success: true
+    });
+  }
+
   if (!verifyAppSumoSignature(req)) {
     return res.status(401).json({
       success: false,
