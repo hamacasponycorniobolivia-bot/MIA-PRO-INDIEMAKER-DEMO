@@ -1,6 +1,10 @@
 # Compiler files
 cache/
-out/
+out/*
+!out/MIAAsset.sol/
+!out/MIAAsset.sol/MIAAsset.json
+!out/MIAUSDC.sol/
+!out/MIAUSDC.sol/MIAUSDC.json
 
 # Commonly ignored directories
 .logs/
