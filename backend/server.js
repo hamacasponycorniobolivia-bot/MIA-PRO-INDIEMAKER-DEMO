@@ -24,6 +24,7 @@ const swaggerSpec = require('./swagger');
 const { mintNFT } = require('./web3Service');
 
 const app = express();
+app.set('trust proxy', 1);
 
 const redis = createClient({
   socket: {
@@ -36,9 +37,11 @@ redis.on('error', (err) => {
   console.error('Redis error:', err.message);
 });
 
-redis.connect().catch((err) => {
-  console.error('Redis connection failed:', err.message);
-});
+if (require.main === module) {
+  redis.connect().catch((err) => {
+    console.error('Redis connection failed:', err.message);
+  });
+}
 app.use(helmet());
 const limiter = rateLimit({
   windowMs: 60 * 1000,
@@ -1100,7 +1103,8 @@ const PORT = process.env.PORT || 3000;
 
 // Procesador del Outbox: convierte eventos pendientes
 // en entregas de webhook.
-setInterval(async () => {
+if (require.main === module) {
+  setInterval(async () => {
   try {
     const processed = await processOutbox();
     const deliveries = await processWebhookDeliveries();
@@ -1113,8 +1117,13 @@ setInterval(async () => {
   } catch (error) {
     console.error('Outbox worker error:', error.message);
   }
-}, 5000);
+  }, 5000);
+}
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🔥 API de MIA corriendo en el puerto ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🔥 API de MIA corriendo en el puerto ${PORT}`);
+  });
+}
+
+module.exports = app;

@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
+const pool = require('./db');
 const path = require('path');
 const dotenv = require('dotenv');
 const { authenticate } = require('./middleware');
@@ -36,7 +36,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 const router = express.Router();
 
-const REQUIRED_ENV = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'JWT_SECRET'];
+const REQUIRED_ENV = ['JWT_SECRET'];
 
 for (const name of REQUIRED_ENV) {
   if (!process.env[name]) {
@@ -48,16 +48,6 @@ if (process.env.JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET must be at least 32 characters');
 }
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  database: process.env.DB_NAME,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000
-});
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
