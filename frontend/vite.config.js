@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/MIA-PRO-INDIEMAKER-DEMO/',
+  base: '/',
   plugins: [
     react(),
     tailwindcss(),
