@@ -1,5 +1,5 @@
 [build]
-  command = "cd frontend && npm run build && cd ../backend && npm ci --omit=dev"
+  command = "cd frontend && npm ci && npm run build"
   publish = "frontend/dist"
   functions = "netlify/functions"
 
@@ -12,7 +12,6 @@
   from = "/*"
   to = "/index.html"
   status = 200
-
 
 [functions]
   node_bundler = "esbuild"
