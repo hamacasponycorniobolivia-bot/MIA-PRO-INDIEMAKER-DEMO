@@ -161,9 +161,8 @@ router.get('/oauth/callback', async (req, res) => {
   }
 
   if (!code) {
-    return res.status(400).json({
-      success: false,
-      error: 'Missing OAuth code'
+    return res.status(200).json({
+      success: true
     });
   }
 
