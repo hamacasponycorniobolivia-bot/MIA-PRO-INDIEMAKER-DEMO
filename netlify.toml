@@ -13,3 +13,11 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["otplib", "@otplib/plugin-base32-scure", "@scure/base"]
+
+[build.environment]
+  NODE_VERSION = "22"
