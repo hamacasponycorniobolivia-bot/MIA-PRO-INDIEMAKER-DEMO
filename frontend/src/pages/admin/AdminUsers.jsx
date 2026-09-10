@@ -486,6 +486,7 @@ export default function AdminUsers() {
 
                     <td className="px-5 py-4 text-right">
 
+                    {["SUPER_ADMIN","ADMIN"].includes(String(user?.role || "").toUpperCase()) && (
                                           <button
                         onClick={() => deleteUser(user)}
                         className="inline-flex items-center gap-2 rounded-lg border border-red-400/10 bg-red-500/[0.04] px-3 py-2 text-xs font-medium text-red-400 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-300"
@@ -493,6 +494,7 @@ export default function AdminUsers() {
                         <Trash2 size={14} />
                         {isEs ? 'Eliminar' : 'Delete'}
                       </button>
+                  )}
 
 
 
