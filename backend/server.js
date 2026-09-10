@@ -55,7 +55,11 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: false
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) =>
+    req.headers['x-nf-client-connection-ip'] ||
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    'unknown'
 });
 
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:4173,http://localhost:5173')
