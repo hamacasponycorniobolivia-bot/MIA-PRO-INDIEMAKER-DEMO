@@ -47,7 +47,11 @@ const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req) =>
+    req.headers['x-nf-client-connection-ip'] ||
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    'unknown'
 });
 
 const loginLimiter = rateLimit({
