@@ -78,7 +78,7 @@ function App() {
 
           {/* ==================== USUARIOS ==================== */}
         <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']} />}>
-          <Route path="/admin/users" element={<UserLayout />}>
+          <Route path="/admin/users" element={<AdminLayout />}>
             <Route index element={<AdminUsers />} />
           </Route>
         </Route>
