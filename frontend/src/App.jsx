@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider';
+import { useAuth } from './context/AuthContext';
 
 import UserLayout from './layouts/UserLayout';
 import AdminLayout from './layouts/AdminLayout';
@@ -41,6 +42,12 @@ import AdminSystem from './pages/admin/AdminSystem';
 import AdminExports from './pages/admin/AdminExports';
 import AdminSettings from './pages/admin/AdminSettings';
 
+function AdminUsersRoute() {
+  const { user } = useAuth();
+
+  return user?.role === 'USER' ? <UserLayout /> : <AdminLayout />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -76,13 +83,19 @@ function App() {
             </Route>
           </Route>
 
+        {/* ==================== USUARIOS ==================== */}
+        <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']} />}>
+          <Route path="/admin/users" element={<AdminUsersRoute />}>
+            <Route index element={<AdminUsers />} />
+          </Route>
+        </Route>
+
           {/* ==================== ADMIN ==================== */}
           <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']} />}>
             <Route path="/admin" element={<AdminLayout />}>
 
               <Route index element={<AdminOverview />} />
 
-              <Route path="users" element={<AdminUsers />} />
               <Route path="tenants" element={<AdminTenants />} />
               <Route path="wallets" element={<AdminWallets />} />
               <Route path="assets" element={<AdminAssets />} />
