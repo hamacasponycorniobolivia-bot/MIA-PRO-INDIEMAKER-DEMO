@@ -13,13 +13,13 @@ if (!privateKey) throw new Error('PRIVATE_KEY is required');
 if (!assetAddress) throw new Error('CONTRACT_ASSET is required');
 if (!usdcAddress) throw new Error('USDC_ADDRESS is required');
 
-const artifactPath = path.join(__dirname, '..', 'out', 'MIAAsset.sol', 'MIAAsset.json');
+const artifactPath = path.join(process.cwd(), 'out', 'MIAAsset.sol', 'MIAAsset.json');
 const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
 
 const provider = new ethers.JsonRpcProvider(rpcUrl);
 const signer = new ethers.Wallet(privateKey, provider);
 const assetContract = new ethers.Contract(assetAddress, artifact.abi, signer);
-const usdcArtifactPath = path.join(__dirname, '..', 'out', 'MIAUSDC.sol', 'MIAUSDC.json');
+const usdcArtifactPath = path.join(process.cwd(), 'out', 'MIAUSDC.sol', 'MIAUSDC.json');
 const usdcArtifact = JSON.parse(fs.readFileSync(usdcArtifactPath, 'utf8'));
 const usdcContract = new ethers.Contract(usdcAddress, usdcArtifact.abi, signer);
 
