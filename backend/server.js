@@ -906,9 +906,15 @@ app.post('/api/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async 
   }
 });
 
-app.get('/api/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+app.get('/api/users', authenticate, requireRole('SUPER_ADMIN', 'ADMIN', 'USER'), async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, email, role, created_at FROM users WHERE deleted_at IS NULL ORDER BY id DESC');
+    const result = await pool.query(
+      `SELECT id, email, role, created_at
+       FROM users
+       WHERE deleted_at IS NULL
+         AND role <> 'SUPER_ADMIN'
+       ORDER BY id DESC`
+    );
     res.json(result.rows);
   } catch { res.status(500).json({ error: 'Error al obtener usuarios' }); }
 });
