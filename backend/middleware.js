@@ -1,17 +1,10 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
+const pool = require('./db');
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is required');
