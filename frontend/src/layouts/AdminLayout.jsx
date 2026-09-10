@@ -9,6 +9,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const { i18n } = useTranslation();
   const [activeLanguage, setActiveLanguage] = useState(
     () => localStorage.getItem('mia_pro_language') || i18n.resolvedLanguage || 'es'
@@ -135,7 +136,64 @@ export default function AdminLayout() {
             <div><h2 className="text-xl font-bold text-white tracking-tight">{menuItems.find(item => item.path === location.pathname)?.label || 'Panel de Control'}</h2><p className="text-xs text-slate-300 hidden sm:block">Bienvenido de nuevo, Administrador.</p></div>
           </div>
           <div className="flex items-center gap-4">
-            <button className="relative p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"><Bell className="w-5 h-5" /><span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-slate-950"></span></button>
+            <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsInfoOpen((open) => !open)}
+              aria-label="Información de MIA Pro"
+              className="relative p-2 text-slate-400 hover:text-cyan-300 hover:bg-cyan-400/10 rounded-full transition-all"
+            >
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-cyan-400 rounded-full border-2 border-slate-950 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></span>
+            </button>
+
+            {isInfoOpen && (
+              <div className="absolute right-0 top-12 z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-cyan-400/20 bg-slate-900/95 backdrop-blur-xl shadow-2xl shadow-cyan-950/30 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-800 bg-cyan-400/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-cyan-300">MIA Pro</p>
+                      <p className="text-xs text-slate-400 mt-1">Plataforma Fintech · Blockchain · Web3</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsInfoOpen(false)}
+                      className="text-slate-500 hover:text-white text-lg"
+                      aria-label="Cerrar"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-[65vh] overflow-y-auto p-4 space-y-2">
+                  {[
+                    ['💳', 'Pagos y transacciones', 'Gestión de operaciones financieras y movimientos.'],
+                    ['👛', 'Wallets y activos', 'Gestión de wallets, activos digitales y NFTs.'],
+                    ['⛓️', 'Blockchain', 'Integración con Ethereum y redes compatibles.'],
+                    ['📒', 'Ledger contable', 'Contabilidad de doble partida y trazabilidad.'],
+                    ['🛒', 'Marketplace', 'Gestión de listings, órdenes y operaciones de mercado.'],
+                    ['🔐', 'Seguridad', 'Autenticación, roles, protección y controles administrativos.'],
+                    ['🔔', 'Webhooks y eventos', 'Eventos, entregas, reintentos y procesamiento asíncrono.'],
+                    ['📊', 'Métricas', 'Visitas, actividad y métricas administrativas.'],
+                    ['🧾', 'Auditoría y logs', 'Trazabilidad de operaciones y eventos del sistema.'],
+                    ['💾', 'Backups y exportaciones', 'Herramientas de respaldo y exportación de información.'],
+                    ['⚙️', 'Administración', 'Usuarios, tenants, configuración y estado del sistema.'],
+                  ].map(([icon, title, description]) => (
+                    <div key={title} className="rounded-xl border border-white/5 bg-slate-950/60 px-3 py-3">
+                      <div className="flex items-start gap-3">
+                        <span className="text-lg">{icon}</span>
+                        <div>
+                          <p className="text-sm font-semibold text-white">{title}</p>
+                          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
             <div className="h-8 w-[1px] bg-slate-800 mx-2 hidden sm:block"></div>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-full"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div><span className="text-xs font-medium text-slate-300">Sistema Operativo</span></div>
           </div>
