@@ -40,6 +40,7 @@ import AdminBackups from './pages/admin/AdminBackups';
 import AdminSystem from './pages/admin/AdminSystem';
 import AdminExports from './pages/admin/AdminExports';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminVisitMetrics from './pages/admin/AdminVisitMetrics';
 
 function App() {
   return (
@@ -105,6 +106,13 @@ function App() {
 
             </Route>
           </Route>
+
+        {/* ==================== MÉTRICAS — SOLO SUPER_ADMIN ==================== */}
+        <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+          <Route path="/admin/visit-metrics" element={<AdminLayout />}>
+            <Route index element={<AdminVisitMetrics />} />
+          </Route>
+        </Route>
 
           {/* ==================== CATCH ALL ==================== */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

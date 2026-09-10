@@ -50,6 +50,14 @@ export default function AdminLayout() {
     { path: '/admin/settings', label: 'Configuración', icon: Settings },
   ];
 
+  if (String(user?.role || '').toUpperCase() === 'SUPER_ADMIN') {
+    menuItems.push({
+      path: '/admin/visit-metrics',
+      label: '📊 Métricas de Visitas',
+      icon: Activity
+    });
+  }
+
   useEffect(() => {
     const timer = setTimeout(() => setIsMobileMenuOpen(false), 0);
     return () => clearTimeout(timer);

@@ -317,3 +317,14 @@ model appsumo_licenses {
   @@index([tenant_id])
   @@index([license_status])
 }
+
+model site_visits {
+  id          Int      @id @default(autoincrement())
+  visitor_id  String   @db.VarChar(100)
+  visited_at  DateTime @default(now()) @db.Timestamp(6)
+  path        String?  @db.VarChar(500)
+  user_agent  String?  @db.VarChar(1000)
+
+  @@index([visited_at], map: "idx_site_visits_visited_at")
+  @@index([visitor_id], map: "idx_site_visits_visitor_id")
+}

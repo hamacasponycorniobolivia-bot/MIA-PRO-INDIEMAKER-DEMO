@@ -106,6 +106,29 @@ app.use('/api/appsumo', appsumoRoutes);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+app.post('/api/visits', async (req, res) => {
+  try {
+    const visitorId = String(req.body?.visitor_id || '').trim();
+    const path = String(req.body?.path || '/').slice(0, 500);
+    const userAgent = String(req.headers['user-agent'] || '').slice(0, 1000);
+
+    if (!visitorId || visitorId.length > 100) {
+      return res.status(400).json({ error: 'visitor_id requerido' });
+    }
+
+    await pool.query(
+      `INSERT INTO site_visits (visitor_id, path, user_agent)
+       VALUES ($1, $2, $3)`,
+      [visitorId, path, userAgent]
+    );
+
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    console.error('Visit tracking error:', error);
+    res.status(500).json({ error: 'No se pudo registrar la visita' });
+  }
+});
+
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
@@ -940,6 +963,55 @@ app.delete('/api/users/:id', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), 
 
 // ===== ADMIN API =====
 // Endpoints administrativos protegidos por SUPER_ADMIN / ADMIN.
+
+app.get('/api/admin/visit-metrics', authenticate, requireRole('SUPER_ADMIN'), async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total_visits,
+        COUNT(DISTINCT visitor_id)::int AS unique_visitors,
+        COUNT(*) FILTER (WHERE visited_at >= CURRENT_DATE)::int AS today_visits,
+        COUNT(DISTINCT visitor_id) FILTER (WHERE visited_at >= CURRENT_DATE)::int AS today_unique,
+        COUNT(*) FILTER (WHERE visited_at >= CURRENT_DATE - INTERVAL '6 days')::int AS last_7_days_visits,
+        COUNT(DISTINCT visitor_id) FILTER (WHERE visited_at >= CURRENT_DATE - INTERVAL '6 days')::int AS last_7_days_unique,
+        COUNT(*) FILTER (WHERE visited_at >= CURRENT_DATE - INTERVAL '29 days')::int AS last_30_days_visits,
+        COUNT(DISTINCT visitor_id) FILTER (WHERE visited_at >= CURRENT_DATE - INTERVAL '29 days')::int AS last_30_days_unique
+      FROM site_visits
+    `);
+
+    const daily = await pool.query(`
+      SELECT
+        TO_CHAR(day, 'YYYY-MM-DD') AS date,
+        COALESCE(COUNT(sv.id), 0)::int AS visits,
+        COUNT(DISTINCT sv.visitor_id)::int AS unique_visitors
+      FROM generate_series(
+        CURRENT_DATE - INTERVAL '29 days',
+        CURRENT_DATE,
+        INTERVAL '1 day'
+      ) AS day
+      LEFT JOIN site_visits sv
+        ON sv.visited_at >= day
+       AND sv.visited_at < day + INTERVAL '1 day'
+      GROUP BY day
+      ORDER BY day
+    `);
+
+    const users = await pool.query(`
+      SELECT COUNT(*)::int AS registered_users
+      FROM users
+      WHERE deleted_at IS NULL
+    `);
+
+    res.json({
+      ...result.rows[0],
+      registered_users: users.rows[0].registered_users,
+      daily: daily.rows
+    });
+  } catch (error) {
+    console.error('Visit metrics error:', error);
+    res.status(500).json({ error: 'No se pudieron obtener las métricas de visitas' });
+  }
+});
 
 app.get('/api/admin/stats', authenticate, requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
   try {
